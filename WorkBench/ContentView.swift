@@ -167,8 +167,8 @@ struct ContentView: View {
            let index = workflow.draft?.resources.firstIndex(where: { $0.id == resourceID }),
            let resource = workflow.draft?.resources[index] {
             Form {
-                TextField("Name", text: resourceNameBinding(index: index, workflow: workflow))
-                resourceFields(resource: resource, index: index, workflow: workflow)
+                TextField("Name", text: resourceNameBinding(resourceID: resourceID, workflow: workflow))
+                resourceFields(resource: resource, workflow: workflow)
                 validationMessages(for: workflow.draft)
             }
             .formStyle(.grouped)
@@ -203,36 +203,41 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private func resourceFields(resource: Resource, index: Int, workflow: ProjectWorkflow) -> some View {
+    private func resourceFields(resource: Resource, workflow: ProjectWorkflow) -> some View {
         switch resource.payload {
         case let .browserWindow(browser):
             Section("Safari Tabs") {
                 ForEach(browser.tabs.indices, id: \.self) { tabIndex in
-                    TextField("URL", text: browserTabBinding(index, tabIndex, workflow))
+                    TextField("URL", text: browserTabBinding(resource.id, tabIndex, workflow))
                 }
                 Button("Add Tab") {
-                    model.updateDraft { $0.resources[index].payload = .browserWindow(
-                        BrowserWindow(tabs: browser.tabs + ["https://"])
-                    ) }
+                    model.updateDraft { project in
+                        guard let index = project.resources.firstIndex(where: { $0.id == resource.id }),
+                              case var .browserWindow(currentBrowser) = project.resources[index].payload else { return }
+                        currentBrowser.tabs.append("https://")
+                        project.resources[index].payload = .browserWindow(currentBrowser)
+                    }
                 }
                 if browser.tabs.count > 1 {
                     Button("Remove Last Tab") {
                         model.updateDraft { project in
-                            var tabs = browser.tabs
-                            tabs.removeLast()
-                            project.resources[index].payload = .browserWindow(BrowserWindow(tabs: tabs))
+                            guard let index = project.resources.firstIndex(where: { $0.id == resource.id }),
+                                  case var .browserWindow(currentBrowser) = project.resources[index].payload,
+                                  currentBrowser.tabs.count > 1 else { return }
+                            currentBrowser.tabs.removeLast()
+                            project.resources[index].payload = .browserWindow(currentBrowser)
                         }
                     }
                 }
             }
         case let .terminalSession(terminal):
             TextField("Working Directory", text: payloadStringBinding(
-                terminal.workingDirectory, index: index, workflow: workflow,
+                terminal.workingDirectory, resourceID: resource.id,
                 makePayload: { .terminalSession(TerminalSession(workingDirectory: $0)) }
             ))
         case let .finderWindow(finder):
             TextField("Folder", text: payloadStringBinding(
-                finder.folder, index: index, workflow: workflow,
+                finder.folder, resourceID: resource.id,
                 makePayload: { .finderWindow(FinderWindow(folder: $0)) }
             ))
         case let .unsupported(type, _):
@@ -253,19 +258,32 @@ struct ContentView: View {
         Binding(get: { workflow.draft?.name ?? "" }, set: { name in model.updateDraft { $0.name = name } })
     }
 
-    private func resourceNameBinding(index: Int, workflow: ProjectWorkflow) -> Binding<String> {
-        Binding(get: { workflow.draft?.resources[index].name ?? "" }, set: { name in
-            model.updateDraft { $0.resources[index].name = name }
+    private func resourceNameBinding(resourceID: ResourceID, workflow: ProjectWorkflow) -> Binding<String> {
+        Binding(get: {
+            workflow.draft?.resources.first(where: { $0.id == resourceID })?.name ?? ""
+        }, set: { name in
+            model.updateDraft { project in
+                guard let index = project.resources.firstIndex(where: { $0.id == resourceID }) else { return }
+                project.resources[index].name = name
+            }
         })
     }
 
-    private func browserTabBinding(_ index: Int, _ tabIndex: Int, _ workflow: ProjectWorkflow) -> Binding<String> {
+    private func browserTabBinding(
+        _ resourceID: ResourceID,
+        _ tabIndex: Int,
+        _ workflow: ProjectWorkflow
+    ) -> Binding<String> {
         Binding(get: {
-            guard case let .browserWindow(browser) = workflow.draft?.resources[index].payload else { return "" }
+            guard let resource = workflow.draft?.resources.first(where: { $0.id == resourceID }),
+                  case let .browserWindow(browser) = resource.payload,
+                  browser.tabs.indices.contains(tabIndex) else { return "" }
             return browser.tabs[tabIndex]
         }, set: { value in
             model.updateDraft { project in
-                guard case var .browserWindow(browser) = project.resources[index].payload else { return }
+                guard let index = project.resources.firstIndex(where: { $0.id == resourceID }),
+                      case var .browserWindow(browser) = project.resources[index].payload,
+                      browser.tabs.indices.contains(tabIndex) else { return }
                 browser.tabs[tabIndex] = value
                 project.resources[index].payload = .browserWindow(browser)
             }
@@ -274,12 +292,14 @@ struct ContentView: View {
 
     private func payloadStringBinding(
         _ current: String,
-        index: Int,
-        workflow: ProjectWorkflow,
+        resourceID: ResourceID,
         makePayload: @escaping (String) -> ResourcePayload
     ) -> Binding<String> {
         Binding(get: { current }, set: { value in
-            model.updateDraft { $0.resources[index].payload = makePayload(value) }
+            model.updateDraft { project in
+                guard let index = project.resources.firstIndex(where: { $0.id == resourceID }) else { return }
+                project.resources[index].payload = makePayload(value)
+            }
         })
     }
 

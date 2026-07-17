@@ -136,8 +136,8 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
 
     func removeSelectedResource() {
         guard let id = selectedResourceID else { return }
-        updateDraft { $0.resources.removeAll { $0.id == id } }
         selectedResourceID = nil
+        updateDraft { $0.resources.removeAll { $0.id == id } }
     }
 
     func moveResources(from offsets: IndexSet, to destination: Int) {

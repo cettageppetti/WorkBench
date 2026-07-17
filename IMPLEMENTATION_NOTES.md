@@ -162,3 +162,9 @@ The first production integration run opened all three applications, but revealed
 The Terminal adapter initially activated Terminal before sending its `do script` command. During manual verification, a newly created Terminal session appeared to receive the home-directory `cd` twice. The adapter now creates the scripted session before activating Terminal, and automated coverage verifies that ordering. A signed-build retest initially showed a single `cd`, but a later repeated Project launch displayed it twice again. The final directory remained correct, so this is currently an intermittent cosmetic limitation rather than a launch failure. WorkBench retains the explicit directory change for predictable behavior when shell profiles customize their initial directory.
 
 Repeated Project opening was manually verified by comparing application window counts before and after another launch. Safari, Terminal, and Finder each gained exactly one window, confirming that WorkBench does not reuse the previously opened workspace windows. Permission-denial recovery has not yet been manually verified.
+
+## Resource removal crash fix
+
+Manual hardening found a crash when a newly added Browser Window was selected and immediately removed. The outgoing SwiftUI property editor reevaluated a binding that captured the Resource's former array index after the Resource had been deleted, causing an out-of-bounds subscript trap.
+
+Resource property bindings and tab actions now use the stable `ResourceID` to find the current array position at access time. Missing Resources and stale tab positions safely return or no-op, and selection is cleared before removal mutates the draft. The full automated suite passes, and the original add-select-remove sequence was repeated successfully in a signed build without a crash.
