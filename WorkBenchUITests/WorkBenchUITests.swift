@@ -46,9 +46,7 @@ final class WorkBenchUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 2))
 
-        let saveButton = app.buttons["save-project-button"]
-        XCTAssertTrue(saveButton.isEnabled)
-        saveButton.click()
+        app.typeKey("s", modifierFlags: .command)
 
         XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 1))
         XCTAssertTrue(app.staticTexts["Renamed Project"].exists)
@@ -196,11 +194,9 @@ final class WorkBenchUITests: XCTestCase {
             with: "~/Projects"
         )
 
-        let saveButton = app.buttons["save-project-button"]
-        XCTAssertTrue(saveButton.isEnabled)
-        saveButton.click()
+        app.typeKey("s", modifierFlags: .command)
 
-        XCTAssertFalse(saveButton.isEnabled)
+        XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 1))
         XCTAssertTrue(app.staticTexts["Development Terminal"].exists)
         XCTAssertEqual(
             app.textFields["terminal-working-directory-field"].value as? String,
@@ -255,11 +251,9 @@ final class WorkBenchUITests: XCTestCase {
         finderResource.click(forDuration: 0.5, thenDragTo: browserResource)
         XCTAssertGreaterThan(finderResource.frame.minY, browserResource.frame.minY)
 
-        let saveButton = app.buttons["save-project-button"]
-        XCTAssertTrue(saveButton.isEnabled)
-        saveButton.click()
+        app.typeKey("s", modifierFlags: .command)
 
-        XCTAssertFalse(saveButton.isEnabled)
+        XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 1))
         XCTAssertGreaterThan(finderResource.frame.minY, browserResource.frame.minY)
     }
 
@@ -318,9 +312,7 @@ final class WorkBenchUITests: XCTestCase {
         XCTAssertEqual(nameField.value as? String, "Untitled Project")
         XCTAssertFalse(projectsList.staticTexts["Untitled Project"].exists)
 
-        let saveButton = app.buttons["save-project-button"]
-        XCTAssertTrue(saveButton.isEnabled)
-        saveButton.click()
+        app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(projectsList.staticTexts["Untitled Project"].exists)
 
         let duplicateProjectButton = app.buttons["duplicate-project-button"]
@@ -329,9 +321,8 @@ final class WorkBenchUITests: XCTestCase {
         XCTAssertEqual(nameField.value as? String, "Untitled Project Copy")
         XCTAssertFalse(projectsList.staticTexts["Untitled Project Copy"].exists)
 
-        XCTAssertTrue(saveButton.isEnabled)
-        saveButton.click()
-        XCTAssertFalse(saveButton.isEnabled)
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 1))
         XCTAssertTrue(projectsList.staticTexts["Untitled Project"].exists)
         XCTAssertTrue(projectsList.staticTexts["Untitled Project Copy"].exists)
     }
@@ -353,9 +344,7 @@ final class WorkBenchUITests: XCTestCase {
             with: "Projects"
         )
 
-        let openButton = app.buttons["open-project-button"]
-        XCTAssertTrue(openButton.isEnabled)
-        openButton.click()
+        app.typeKey("o", modifierFlags: .command)
 
         let report = app.sheets.firstMatch
         XCTAssertTrue(report.waitForExistence(timeout: 2))
@@ -391,7 +380,10 @@ final class WorkBenchUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts[
             "This Resource type is unsupported. Its JSON will be preserved."
         ].exists)
-        XCTAssertTrue(app.buttons["open-project-button"].isEnabled)
+        let fileMenu = app.menuBars.menuBarItems["File"]
+        fileMenu.click()
+        XCTAssertTrue(app.menuItems["Open Project"].isEnabled)
+        app.typeKey(.escape, modifierFlags: [])
     }
 
     @MainActor

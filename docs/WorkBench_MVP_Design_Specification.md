@@ -254,8 +254,7 @@ Properties:
 Do not implement:
 
 - Workspace capture
-- AeroSpace integration
-- Window placement
+- Per-window placement beyond activating an optional Project-level AeroSpace workspace
 - Window sizing
 - Browsers other than Safari and Google Chrome
 - Terminal selection
@@ -270,6 +269,18 @@ Do not implement:
 - Docker
 
 The MVP proves architecture—not features.
+
+## Planned AeroSpace Workspace Destination
+
+A Project may optionally name an AeroSpace workspace to activate before its
+Resources launch. WorkBench owns the Project's desired destination and the
+preflight recovery flow. AeroSpace owns monitor assignment, layouts, bindings,
+and global routing rules. WorkBench does not edit AeroSpace configuration.
+
+If the destination cannot be activated, WorkBench launches nothing until the
+user explicitly chooses to open without placement or cancels. Projects without
+a destination retain normal macOS placement. Named native macOS Spaces are not
+supported.
 
 ---
 

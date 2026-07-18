@@ -56,17 +56,15 @@ struct UserDefaultsBookmarkDataStore: BookmarkDataStoring {
     }
 }
 
-protocol SecurityScopedBookmarking {
+protocol DirectoryBookmarking {
     func createBookmark(for url: URL) throws -> Data
     func resolveBookmark(_ data: Data) throws -> (url: URL, isStale: Bool)
-    func startAccessing(_ url: URL) -> Bool
-    func stopAccessing(_ url: URL)
 }
 
-struct FoundationSecurityScopedBookmarker: SecurityScopedBookmarking {
+struct FoundationDirectoryBookmarker: DirectoryBookmarking {
     func createBookmark(for url: URL) throws -> Data {
         try url.bookmarkData(
-            options: .withSecurityScope,
+            options: [],
             includingResourceValuesForKeys: nil,
             relativeTo: nil
         )
@@ -76,19 +74,11 @@ struct FoundationSecurityScopedBookmarker: SecurityScopedBookmarking {
         var isStale = false
         let url = try URL(
             resolvingBookmarkData: data,
-            options: .withSecurityScope,
+            options: [],
             relativeTo: nil,
             bookmarkDataIsStale: &isStale
         )
         return (url, isStale)
-    }
-
-    func startAccessing(_ url: URL) -> Bool {
-        url.startAccessingSecurityScopedResource()
-    }
-
-    func stopAccessing(_ url: URL) {
-        url.stopAccessingSecurityScopedResource()
     }
 }
 
@@ -104,12 +94,12 @@ final class ConfigurationDirectoryAccess {
     private(set) var status: Status = .unresolved
 
     private let bookmarkStore: any BookmarkDataStoring
-    private let bookmarker: any SecurityScopedBookmarking
+    private let bookmarker: any DirectoryBookmarking
     private let fileManager: FileManager
 
     init(
         bookmarkStore: any BookmarkDataStoring = UserDefaultsBookmarkDataStore(),
-        bookmarker: any SecurityScopedBookmarking = FoundationSecurityScopedBookmarker(),
+        bookmarker: any DirectoryBookmarking = FoundationDirectoryBookmarker(),
         fileManager: FileManager = .default,
         initialStatus: Status = .unresolved
     ) {
@@ -125,10 +115,6 @@ final class ConfigurationDirectoryAccess {
         guard case let .ready(url) = status else {
             throw ConfigurationDirectoryAccessError.unresolved
         }
-        guard bookmarker.startAccessing(url) else {
-            throw ConfigurationDirectoryAccessError.accessDenied
-        }
-        defer { bookmarker.stopAccessing(url) }
         return try operation(url)
     }
 
@@ -144,10 +130,6 @@ final class ConfigurationDirectoryAccess {
                 throw ConfigurationDirectoryAccessError.bookmarkIsStale
             }
             try Self.validateDirectory(resolved.url, fileManager: fileManager)
-            guard bookmarker.startAccessing(resolved.url) else {
-                throw ConfigurationDirectoryAccessError.accessDenied
-            }
-            defer { bookmarker.stopAccessing(resolved.url) }
             try verifyReadWriteAccess(to: resolved.url)
             status = .ready(resolved.url)
         } catch {
@@ -160,10 +142,6 @@ final class ConfigurationDirectoryAccess {
         do {
             try Self.validateDirectory(url, fileManager: fileManager)
             let bookmarkData = try bookmarker.createBookmark(for: url)
-            guard bookmarker.startAccessing(url) else {
-                throw ConfigurationDirectoryAccessError.accessDenied
-            }
-            defer { bookmarker.stopAccessing(url) }
             try verifyReadWriteAccess(to: url)
             bookmarkStore.save(bookmarkData)
             status = .ready(url)

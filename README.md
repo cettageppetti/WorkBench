@@ -19,7 +19,7 @@ The MVP will answer one question: can a user describe a working environment as a
 - Open Terminal windows at configured directories.
 - Open Finder windows at configured folders.
 - Store one human-readable JSON file per Project in `~/Documents/WorkBench`.
-- Request one-time access to that folder through the standard macOS folder picker and restore it with a security-scoped bookmark.
+- Remember the selected folder through a standard macOS bookmark and restore it on later launches.
 - Load hand-edited configuration files at launch or through the standard macOS **Reload Configurations** command.
 - Report invalid files and unsupported Resource types without hiding them.
 - Continue opening the remaining Resources when an individual Resource fails.

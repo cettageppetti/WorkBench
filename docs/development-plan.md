@@ -46,6 +46,23 @@ The spike confirmed that fixed Documents access is unavailable under App Sandbox
 
 The allowed-permission path is verified in a signed sandboxed build for Safari, Terminal, and Finder. Denied and revoked permission recovery remains to be checked during MVP hardening.
 
+### AeroSpace communication spike
+
+- Compare typed workspace discovery and activation through the AeroSpace CLI
+  and documented Unix-domain socket from a signed sandboxed app.
+- Confirm the minimum required entitlements and record failure behavior without
+  moving to a different workspace.
+- Keep connection details machine-specific and do not introduce a generic
+  command runner.
+
+The original App Sandbox could not see the assumed Homebrew CLI path and denied the
+documented socket connection with `EPERM`; outbound network-client access does
+not alter either result. A second signed proof confirmed that a user-selected
+CLI bookmark persists across launches, but scoped access still cannot execute
+the external binary (`NSCocoaErrorDomain` code 256). The approved resolution is
+to disable App Sandbox, retain Hardened Runtime, and use only fixed typed
+AeroSpace operations.
+
 ### Verification
 
 - Manual results and permission requirements are documented.
@@ -231,7 +248,7 @@ Do not pull these items into the MVP without a separate product decision:
 - live configuration watching or merge conflict handling;
 - import, export, synchronization, or cloud storage;
 - plugins, variables, dependencies, or conditional execution;
-- AeroSpace, AI, SSH, or Docker integrations;
+- exact AeroSpace per-window placement, AI, SSH, or Docker integrations;
 - Project notes; and
 - broad deployment-target support or App Store release work.
 

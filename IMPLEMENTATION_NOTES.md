@@ -2,6 +2,74 @@
 
 This document records implementation details and discoveries that may evolve as the MVP is built. The stable product vision remains in `docs/WorkBench_MVP_Design_Specification.md`.
 
+## Approved AeroSpace launch-destination contract
+
+The first AeroSpace integration increment is Project-level workspace activation,
+not exact per-window placement. A Project may optionally name one AeroSpace
+workspace. WorkBench activates it before launching Resources and leaves focus
+there. Projects without a destination retain current behavior.
+
+Activation failure stops before any Resource opens. The user may explicitly
+choose **Open Without Placement** or **Cancel**. Integration enablement and
+connection details are machine-specific Settings; disabling integration does
+not erase Project destinations. WorkBench never edits AeroSpace configuration,
+does not override its routing rules, and does not target named native macOS
+Spaces.
+
+## AeroSpace sandbox communication spike
+
+The spike used AeroSpace `0.21.2-Beta` and compared its Homebrew CLI with the
+documented Unix-domain socket from signed ad-hoc app bundles. All workspace
+checks were non-destructive: list all workspaces, list the focused workspace,
+attempt to select that same workspace with `--fail-if-noop`, and submit an
+invalid command to inspect failure reporting.
+
+The CLI works from an unsandboxed process and returns structured JSON for
+workspace discovery. From a signed App Sandbox bundle, however,
+`/opt/homebrew/bin/aerospace` is not visible or executable. Adding the outbound
+network-client entitlement does not change executable access.
+
+A direct socket client implemented AeroSpace protocol version 1, including the
+version handshake and length-prefixed JSON request and response frames. The
+App Sandbox denied `connect` to
+`/tmp/bobko.aerospace-<user>.sock` with `EPERM`. The result was identical with
+and without the outbound network-client entitlement. No workspace was changed.
+
+Therefore neither an assumed CLI path nor direct socket access is viable under
+WorkBench's current sandbox entitlements.
+
+A follow-up signed proof selected the AeroSpace CLI through `NSOpenPanel`,
+created an app-scoped security-scoped bookmark, balanced scoped access, and
+attempted the same fixed operations through `Process`. The second app launch
+restored the bookmark without displaying the picker, proving persistence, but
+both the initial and restored launches failed before process creation with
+`NSCocoaErrorDomain` code 256 (`Could not open() the item`). Selecting and
+bookmarking an external executable therefore does not make it executable from
+the sandbox.
+
+All narrow sandbox-compatible candidates tested were blocked. The approved
+resolution is to disable App Sandbox for both Debug and Release while retaining
+Hardened Runtime and its Apple Events Automation entitlement. Sandbox-only file
+access and temporary Apple Event exception entitlements were removed. The app
+is therefore not eligible for Mac App Store distribution without revisiting
+this architecture.
+
+Disabling the sandbox changes the app's preferences location, so the first
+unsandboxed launch asks the user to select the existing WorkBench configuration
+folder again. Project JSON files are not moved or rewritten. Directory
+persistence now uses a normal Foundation bookmark; scoped bookmark creation
+fails outside the sandbox, and direct filesystem access needs no scoped-access
+lifetime.
+
+The standalone signed Debug build succeeds. Its embedded entitlements contain
+Apple Events Automation and the Debug `get-task-allow` entitlement, with no App
+Sandbox entitlement. All 48 unit tests and all 13 signed UI tests pass. The UI
+tests invoke Save through its existing File command and now invoke Open Project
+through a File command with the standard Command-O shortcut, so verification is
+independent of whether macOS places trailing toolbar items in its overflow
+menu. The build continues to emit the expected warning that App Intents
+metadata extraction is skipped because the app does not link App Intents.
+
 ## Baseline
 
 - Xcode: 26.6 (build 17F113)
@@ -12,7 +80,7 @@ This document records implementation details and discoveries that may evolve as 
 - Swift language mode: Swift 6
 - Strict concurrency checking: complete
 - Default actor isolation: Main Actor for the application target
-- App Sandbox: enabled
+- App Sandbox: disabled
 - Hardened Runtime: enabled
 - Dependencies: none
 - Provisional bundle identifier: `com.example.WorkBench`
@@ -24,7 +92,7 @@ The bundle identifier must be replaced with an appropriate reverse-DNS identifie
 - `WorkBench`: native macOS application
 - `WorkBenchTests`: hosted unit-test bundle
 
-Generated Info.plist files are used for both targets. The checked-in entitlements enable App Sandbox, user-selected read/write access, app-scoped bookmarks, Apple Events Automation, and temporary Apple Event exceptions limited to Safari, Chrome, Terminal, and Finder. Safari, Terminal, and Finder were established by the Phase 1 spikes; Chrome was added as a later Resource type and still requires signed integration verification.
+Generated Info.plist files are used for both targets. The checked-in entitlements retain only Hardened Runtime Apple Events Automation. App Sandbox and its user-selected file, app-scoped bookmark, and temporary Apple Event exception entitlements were removed for AeroSpace compatibility. Safari, Terminal, and Finder were established by the Phase 1 spikes; Chrome was added as a later Resource type and still requires signed integration verification.
 
 The app includes a custom macOS icon depicting three organized workspace panels
 on a workbench with a subtle launch motif. A standard `AppIcon.appiconset`
@@ -114,7 +182,7 @@ Unknown Resource types remain valid, retain their complete JSON objects, and can
 
 ## Phase 3 Project repository
 
-The Project repository is implemented behind injected directory, initialization-state, and atomic-writer interfaces. Production operations use the selected configuration directory's security-scoped access, while tests use isolated temporary directories.
+The Project repository is implemented behind injected directory, initialization-state, and atomic-writer interfaces. Production operations use the selected configuration directory directly, while tests use isolated temporary directories.
 
 Repository behavior includes:
 

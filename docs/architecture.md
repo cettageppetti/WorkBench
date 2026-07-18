@@ -12,8 +12,8 @@ The intended structure is a small native SwiftUI application with a domain layer
 - Initial development with Xcode 26.6, macOS SDK 26.5, and Swift 6.3.3; the exact deployment target will be chosen when the Xcode project is created.
 - Swift strict concurrency should be enabled from the beginning.
 - No third-party dependencies.
-- App Sandbox enabled.
-- Project files stored in a user-selected `~/Documents/WorkBench` folder using user-selected read/write access and an app-scoped security bookmark.
+- App Sandbox disabled; Hardened Runtime remains enabled.
+- Project files stored in a user-selected `~/Documents/WorkBench` folder remembered with a standard macOS bookmark.
 - Apple Events/Automation used where exact Safari, Terminal, or Finder window behavior requires it.
 - JSON encoded and decoded with Foundation `Codable` facilities where compatible with lossless unknown-Resource preservation.
 
@@ -103,6 +103,9 @@ A Project launcher validates a Project and dispatches each supported Resource to
 ```text
 Open Project
   -> validate Project
+  -> if an AeroSpace destination is configured
+       -> activate workspace and wait for success
+       -> on failure: launch nothing until Open Without Placement or Cancel
   -> for each Resource in order
        -> unsupported: record skipped
        -> supported: await matching launcher result
@@ -113,6 +116,47 @@ Open Project
 Suggested boundaries are `BrowserLaunching`, `TerminalLaunching`, and `FinderLaunching`. Separate Safari and Chrome adapters conform to `BrowserLaunching`; production adapters communicate with macOS and test doubles return deterministic outcomes.
 
 Apple Events and scripting details belong inside the adapters. The architecture does not expose scripts as part of the Project model because Projects describe desired state, not implementation steps.
+
+### Planned AeroSpace boundary
+
+An optional Project-level launch destination may name one AeroSpace workspace.
+It is declarative Project data; machine-specific integration enablement and
+connection details belong in application Settings. Resource-level destinations
+are deliberately deferred.
+
+WorkBench owns destination selection, workspace activation before Resource
+launching, bounded failure handling, and the explicit **Open Without Placement**
+recovery action. A destination failure is a preflight failure: no Resource is
+launched until the user elects to proceed without placement. Successful
+activation leaves focus on the destination workspace.
+
+AeroSpace remains authoritative for workspace-to-monitor assignment, layouts,
+keyboard bindings, global application routing, and `on-window-detected` rules.
+WorkBench must not edit AeroSpace configuration or fight a rule that later moves
+a launched window. The first integration activates a workspace before launching;
+exact per-window correlation and `move-node-to-workspace --window-id` are future
+concerns.
+
+Projects without a destination do not invoke the integration. If integration is
+disabled or unavailable, stored destinations remain intact. Named native macOS
+Spaces are not an alternative provider because Apple exposes no stable public
+placement API; WorkBench will not use private APIs or UI scripting for them.
+
+The signed sandbox spike ruled out an assumed Homebrew CLI path, direct access
+to AeroSpace's Unix-domain socket, and an explicitly selected CLI. The sandbox
+hides `/opt/homebrew/bin/aerospace`, while socket connection fails with `EPERM`
+even when outbound network-client access is enabled. A security-scoped bookmark
+for the user-selected CLI persists and restores successfully, but `Process`
+cannot execute the selected file and fails with Cocoa error 256 before launch.
+
+The approved production strategy is to run WorkBench without App Sandbox while
+retaining Hardened Runtime. This permits a typed AeroSpace adapter without a
+username-specific temporary filesystem exception. It also means WorkBench is
+not eligible for Mac App Store distribution unless this architecture is changed.
+
+Any production adapter must expose fixed typed operations rather than a generic
+command runner, validate all arguments, use bounded timeouts, and remain
+injectable for tests.
 
 ## JSON configuration schema
 
@@ -184,9 +228,9 @@ Path resolution expands a leading `~` using the current user's home directory. O
 
 The app should use the narrowest reliable system interface for each Resource. Finder may be opened through workspace APIs when they guarantee the required behavior; Apple Events should be used only when a new, specifically configured window cannot otherwise be guaranteed.
 
-Safari, Chrome, and Terminal integration require Automation access. The Xcode target needs appropriate sandbox entitlements and usage descriptions. Permission denial is a normal adapter failure, not a fatal application error.
+Safari, Chrome, and Terminal integration require Automation access. The Xcode target retains the Hardened Runtime Apple Events entitlement and appropriate usage descriptions. Permission denial is a normal adapter failure, not a fatal application error.
 
-The Phase 1 spike confirmed that Safari, Terminal, and Finder do not expose public sandbox scripting access groups sufficient for the MVP operations. In addition to the hardened-runtime Apple Events entitlement and usage description, the sandboxed app uses temporary Apple Event exceptions limited to Safari, Chrome, Terminal, and Finder. This creates a future Mac App Store review risk and must be reassessed before distribution. Chrome still requires signed integration verification.
+The Phase 1 spike confirmed that Safari, Terminal, and Finder did not expose public sandbox scripting access groups sufficient for the MVP operations. With App Sandbox disabled, the sandbox-only temporary Apple Event exceptions were removed. The app retains the Hardened Runtime Apple Events entitlement and usage description. Chrome still requires signed integration verification.
 
 Before the main UI is built out, a technical spike should verify:
 
@@ -196,7 +240,7 @@ Before the main UI is built out, a technical spike should verify:
 - Finder can reliably open the required folder in a window; and
 - denied or revoked Automation access produces actionable errors.
 
-The filesystem spike confirmed that App Sandbox has no fixed Documents-folder entitlement. The approved first-run flow uses a standard folder-selection panel and persists an app-scoped security bookmark. Missing, stale, or denied bookmarks return the app to folder selection without replacing configurations.
+The filesystem spike originally confirmed that App Sandbox has no fixed Documents-folder entitlement. The current unsandboxed first-run flow still uses a standard folder-selection panel for an explicit, understandable configuration choice and persists a normal bookmark. Missing, stale, or inaccessible bookmarks return the app to folder selection without replacing configurations.
 
 ## Concurrency
 
@@ -213,8 +257,9 @@ Errors should be structured for both testing and user presentation. Major catego
 - unsupported schema versions or Resource types;
 - inaccessible or nonexistent paths;
 - unavailable applications;
-- denied Automation or filesystem permission; and
-- external application scripting failures.
+- denied Automation or filesystem permission;
+- external application scripting failures; and
+- unavailable or disabled workspace integration and workspace activation failures.
 
 Low-level errors may be retained for diagnostics, but the UI should display a concise description, affected item, and recovery suggestion when one exists.
 

@@ -53,6 +53,9 @@ struct WorkBenchApp: App {
         }
         .commands {
             CommandGroup(replacing: .saveItem) {
+                Button("Open Project", action: model.openSelectedProject)
+                    .keyboardShortcut("o", modifiers: .command)
+                    .disabled(model.workflow?.draft == nil)
                 Button("Save", action: model.save)
                     .keyboardShortcut("s", modifiers: .command)
                 Button("Reload Configurations", action: model.reload)

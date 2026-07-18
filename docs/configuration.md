@@ -1,6 +1,6 @@
 # WorkBench Configuration Guide
 
-WorkBench stores each Project as a human-readable JSON file in the configuration directory selected on first launch. For the MVP, select `~/Documents/WorkBench`. The app retains access to that directory with a security-scoped bookmark.
+WorkBench stores each Project as a human-readable JSON file in the configuration directory selected on first launch. For the MVP, select `~/Documents/WorkBench`. The app remembers that directory with a standard macOS bookmark.
 
 ## Editing safely
 

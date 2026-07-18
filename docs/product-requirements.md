@@ -66,7 +66,7 @@ The order shown in the Resource list is the saved order and the launch order.
 ### First launch
 
 - On first initialization, WorkBench shall ask the user to create or select `~/Documents/WorkBench` through a standard macOS folder-selection panel.
-- WorkBench shall persist the granted access with an app-scoped security bookmark and restore it on later launches.
+- WorkBench shall persist the selected location with a standard macOS bookmark and restore it on later launches.
 - If the bookmark is missing, stale, or denied, WorkBench shall explain the problem and ask the user to select the folder again.
 - On the first initialization, if no saved Project configurations exist, WorkBench shall create and persist exactly one Project named **Starter Project**.
 - WorkBench shall persist initialization state separately from the presence of Project files, so deleting Starter Project does not cause it to reappear.
@@ -137,6 +137,23 @@ The order shown in the Resource list is the saved order and the launch order.
 - After all Resources have been attempted, WorkBench shall present a consolidated summary when any Resource failed or was skipped.
 - Opening the same Project multiple times shall create another workspace instance; WorkBench shall not search for or reuse existing windows.
 
+### Planned AeroSpace launch destination
+
+- A Project may optionally declare one AeroSpace workspace as its launch destination.
+- The destination applies to the complete Project. Resource-specific destinations are deferred.
+- A Project without a destination shall retain normal macOS and application window placement.
+- WorkBench shall activate the configured AeroSpace workspace and wait for confirmation before launching any Resource.
+- If activation fails, WorkBench shall launch no Resources until the user explicitly chooses **Open Without Placement**; **Cancel** shall leave the Project unopened.
+- Activation failures include disabled integration, unavailable or stopped AeroSpace, connection or executable failure, timeout, and an AeroSpace command failure.
+- After successful activation, focus shall remain on the destination workspace while Resources launch sequentially.
+- Opening the same Project again shall reactivate its destination and create another set of Resource windows.
+- AeroSpace integration shall be machine-specific and disabled until the user enables it in Settings.
+- Disabling integration shall not erase destinations stored in Projects.
+- The Project editor shall offer reported AeroSpace workspaces and permit manual workspace-name entry for offline editing and portability.
+- WorkBench shall require a nonempty workspace name but shall treat AeroSpace as authoritative about availability at launch time.
+- WorkBench shall not edit AeroSpace configuration or override its workspace-to-monitor assignments, layouts, keyboard bindings, global application routing, or `on-window-detected` rules.
+- Named native macOS Spaces shall not be supported; WorkBench shall not use private APIs or UI scripting to manipulate them.
+
 ### Supported Resource behavior
 
 #### Safari Window
@@ -167,8 +184,8 @@ The order shown in the Resource list is the saved order and the launch order.
 
 ### Permissions and privacy
 
-- WorkBench shall enable App Sandbox.
-- It shall request only the Documents-folder and application Automation access needed for MVP behavior.
+- WorkBench shall run outside App Sandbox because its planned AeroSpace integration requires local CLI or Unix-socket access that the sandbox blocks.
+- It shall retain Hardened Runtime and request only application Automation consent needed for MVP behavior.
 - The app shall explain why Automation access is needed when macOS prompts the user.
 - Permission denial shall not crash the app or stop unrelated Resources from launching.
 - Permission errors shall name the affected application and give the user a useful recovery direction.
@@ -188,7 +205,7 @@ The order shown in the Resource list is the saved order and the launch order.
 
 - Capturing the current workspace
 - Detecting or reusing existing application windows
-- Window placement, sizing, or layout
+- Per-window placement, sizing, or layout beyond activating a Project's AeroSpace workspace
 - Browsers other than Safari and Google Chrome
 - Terminals other than Terminal.app
 - Startup commands
@@ -196,7 +213,7 @@ The order shown in the Resource list is the saved order and the launch order.
 - Live filesystem watching or conflict merging
 - Project import, export, or synchronization
 - Plugins, variables, dependencies, or conditional execution
-- AeroSpace integration
+- Resource-specific AeroSpace workspace overrides and exact window-ID correlation
 - AI integration
 - SSH or Docker Resources
 - Project notes

@@ -30,8 +30,6 @@ final class WorkBenchTests: XCTestCase {
         access.restoreAccess()
 
         XCTAssertEqual(access.status, .ready(directory))
-        XCTAssertEqual(bookmarker.startedURLs, [directory])
-        XCTAssertEqual(bookmarker.stoppedURLs, [directory])
         XCTAssertFalse(store.didRemove)
     }
 
@@ -65,7 +63,6 @@ final class WorkBenchTests: XCTestCase {
 
         XCTAssertEqual(access.status, .ready(directory))
         XCTAssertEqual(store.data, Data("created".utf8))
-        XCTAssertEqual(bookmarker.stoppedURLs, [directory])
         XCTAssertFalse(
             try FileManager.default.contentsOfDirectory(atPath: directory.path)
                 .contains { $0.hasPrefix(".workbench-access-probe-") }
@@ -117,12 +114,10 @@ private final class BookmarkStoreStub: BookmarkDataStoring {
     }
 }
 
-private final class BookmarkerStub: SecurityScopedBookmarking {
+private final class BookmarkerStub: DirectoryBookmarking {
     let createdData: Data
     let resolvedURL: URL
     let isStale: Bool
-    private(set) var startedURLs: [URL] = []
-    private(set) var stoppedURLs: [URL] = []
 
     init(
         createdData: Data = Data(),
@@ -140,14 +135,5 @@ private final class BookmarkerStub: SecurityScopedBookmarking {
 
     func resolveBookmark(_ data: Data) throws -> (url: URL, isStale: Bool) {
         (resolvedURL, isStale)
-    }
-
-    func startAccessing(_ url: URL) -> Bool {
-        startedURLs.append(url)
-        return true
-    }
-
-    func stopAccessing(_ url: URL) {
-        stoppedURLs.append(url)
     }
 }

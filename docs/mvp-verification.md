@@ -63,9 +63,9 @@ recovery guidance, enabled chooser action, and hidden Projects editor.
 
 ## Manually verified
 
-- A signed sandboxed build restores access to a selected
+- The earlier signed sandboxed build restored access to a selected
   `~/Documents/WorkBench` directory through an app-scoped bookmark.
-- An isolated signed sandboxed build presents folder selection when its bookmark
+- The earlier isolated signed sandboxed build presented folder selection when its bookmark
   is missing, restores a selected temporary folder after relaunch, returns to
   folder selection with write-failure guidance when access is denied, and shows
   expired-access guidance when macOS marks the bookmark stale.
@@ -86,19 +86,24 @@ repeated during final acceptance verification.
 
 ## Verification still required
 
+The signed unsandboxed suite passes all 48 unit tests and all 13 UI tests. Save
+and Open verification uses stable File commands rather than assuming macOS has
+kept trailing toolbar controls outside its overflow menu. The standalone signed
+app build succeeds and contains no App Sandbox entitlement.
+
 ### Automated UI coverage
 
 The planned automated UI interaction coverage is complete.
 
 Adding controlled launch behavior for UI tests must not become a production
-back door or weaken the sandbox and Automation boundaries.
+back door or weaken the Automation boundary.
 
 ### Manual acceptance and permissions
 
 - Exercise Automation permission denial and revocation independently for
   Safari, Chrome, Terminal, and Finder; verify later Resources are still attempted and
   recovery guidance names the affected application.
-- Verify a signed sandboxed Chrome Window launch creates a new window with tabs
+- Verify a signed Chrome Window launch creates a new window with tabs
   in saved order and that repeated launch creates another window.
 - Run the complete acceptance scenario from a clean configuration and clean
   privacy-permission state.
