@@ -12,7 +12,7 @@ final class WorkBenchAppDelegate: NSObject, NSApplicationDelegate {
 
         self.model = model
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1000, height: 650),
+            contentRect: NSRect(x: 0, y: 0, width: 1800, height: 900),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false

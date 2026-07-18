@@ -103,25 +103,6 @@ struct ContentView: View {
             }
             .accessibilityIdentifier("projects-list")
             .navigationTitle("Projects")
-            .toolbar {
-                ToolbarItemGroup {
-                    Button(action: model.createProject) { Label("New Project", systemImage: "plus") }
-                        .labelStyle(.titleAndIcon)
-                        .accessibilityIdentifier("new-project-button")
-                    Button(action: model.duplicateSelectedProject) {
-                        Label("Duplicate Project", systemImage: "plus.square.on.square")
-                    }
-                    .labelStyle(.titleAndIcon)
-                    .accessibilityIdentifier("duplicate-project-button")
-                    .disabled(workflow.draft == nil)
-                    Button(action: model.confirmDeleteSelectedProject) {
-                        Label("Delete Project", systemImage: "trash")
-                    }
-                    .labelStyle(.titleAndIcon)
-                    .accessibilityIdentifier("delete-project-button")
-                    .disabled(workflow.draft == nil)
-                }
-            }
         } content: {
             List(selection: $model.selectedResourceID) {
                 ForEach(workflow.draft?.resources ?? [], id: \.id) { resource in
@@ -160,6 +141,23 @@ struct ContentView: View {
                 .navigationTitle("Properties")
         }
         .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button(action: model.createProject) { Label("New Project", systemImage: "plus") }
+                    .labelStyle(.titleAndIcon)
+                    .accessibilityIdentifier("new-project-button")
+                Button(action: model.duplicateSelectedProject) {
+                    Label("Duplicate Project", systemImage: "plus.square.on.square")
+                }
+                .labelStyle(.titleAndIcon)
+                .accessibilityIdentifier("duplicate-project-button")
+                .disabled(workflow.draft == nil)
+                Button(action: model.confirmDeleteSelectedProject) {
+                    Label("Delete Project", systemImage: "trash")
+                }
+                .labelStyle(.titleAndIcon)
+                .accessibilityIdentifier("delete-project-button")
+                .disabled(workflow.draft == nil)
+            }
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Open Project", systemImage: "play.fill", action: model.openSelectedProject)
                     .labelStyle(.titleAndIcon)

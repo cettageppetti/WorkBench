@@ -163,8 +163,10 @@ focus, dirty-state behavior, and VoiceOver labels. The 840×520 minimum and a
 large window layout remain practical. The initial automatic toolbar style kept
 all actions icon-only even with ample width, making Open Project difficult to
 discover. New, Duplicate, Delete, Open Project, and Save now explicitly use
-title-and-icon labels; at minimum width, Open Project and Save move into the
-native overflow menu without overlap.
+title-and-icon labels in window-level primary toolbar groups. This placement
+keeps the Project title beside the sidebar in the production `Window` scene;
+at minimum width, Open Project and Save move into the native overflow menu
+without overlap.
 
 Xcode 26.6's Swift compiler crashed during IR generation for a direct method-reference conversion used as a `Binding<ProjectID?>` setter. An equivalent explicit closure avoids the compiler defect. The initial restricted command-line build also could not run the Swift Observation macro service; normal Xcode build access is required, as already observed for SwiftUI macros in the baseline.
 
