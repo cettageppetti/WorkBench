@@ -71,7 +71,7 @@ Supported Resource payloads:
 | `terminal-session` | `workingDirectory`: path string | Opens one new Terminal window and explicitly changes to the resolved directory. |
 | `finder-window` | `folder`: path string | Opens one new Finder window showing the resolved directory. |
 
-Terminal and Finder paths must be absolute, `~`, or begin with `~/`. WorkBench expands `~` to the macOS login account's home directory. Other relative paths and named-user forms such as `~someone/Projects` are invalid. Path existence and directory accessibility are checked when the Project is opened, not when it is decoded.
+Terminal and Finder paths must be absolute, `~`, or begin with `~/`. WorkBench expands `~` to the macOS login account's home directory. A Terminal session stored as exactly `~` or `~/` opens with Terminal's normal profile startup behavior and does not inject a `cd` command; all other Terminal paths are enforced with an explicit directory change. Other relative paths and named-user forms such as `~someone/Projects` are invalid. Path existence and directory accessibility are checked when the Project is opened, not when it is decoded.
 
 ## Unknown Resource types
 

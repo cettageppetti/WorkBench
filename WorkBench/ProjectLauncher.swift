@@ -155,6 +155,14 @@ struct TerminalLauncher: TerminalLaunching {
         guard let directory = resolveDirectory(terminal.workingDirectory, fileManager: fileManager) else {
             return "The working directory does not exist or is not a folder."
         }
+        if terminal.workingDirectory == "~" || terminal.workingDirectory == "~/" {
+            return executor.execute(source: """
+            tell application "Terminal"
+                do script ""
+                activate
+            end tell
+            """)
+        }
         return executor.execute(source: """
         tell application "Terminal"
             do script ("cd -- " & quoted form of \(appleScriptLiteral(directory.path)))

@@ -71,6 +71,18 @@ final class ProjectLauncherTests: XCTestCase {
         XCTAssertTrue(executor.sources.isEmpty)
     }
 
+    func testHomeTerminalUsesNormalStartupWithoutInjectingCD() {
+        for storedPath in ["~", "~/"] {
+            let executor = AppleScriptExecutorStub()
+            let launcher = TerminalLauncher(executor: executor)
+
+            XCTAssertNil(launcher.open(TerminalSession(workingDirectory: storedPath)))
+            XCTAssertEqual(executor.sources.count, 1)
+            XCTAssertTrue(executor.sources[0].contains("do script \"\""))
+            XCTAssertFalse(executor.sources[0].contains("cd --"))
+        }
+    }
+
     func testParameterizedAdaptersEscapeValuesAndCreateNewWindows() throws {
         let executor = AppleScriptExecutorStub()
         let directory = FileManager.default.temporaryDirectory
@@ -109,6 +121,7 @@ final class ProjectLauncherTests: XCTestCase {
         XCTAssertTrue(executor.sources[1].contains("set active tab index to count of tabs"))
         XCTAssertTrue(executor.sources[2].contains("do script"))
         XCTAssertTrue(executor.sources[2].contains("do script (\"cd -- \" & quoted form of"))
+        XCTAssertTrue(executor.sources[2].contains("cd --"))
         XCTAssertLessThan(
             try XCTUnwrap(executor.sources[2].range(of: "do script")?.lowerBound),
             try XCTUnwrap(executor.sources[2].range(of: "activate")?.lowerBound)

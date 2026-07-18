@@ -201,7 +201,14 @@ An ad-hoc signed sandboxed build succeeds with the approved app-scoped bookmark 
 
 The first production integration run opened all three applications, but revealed that `FileManager.homeDirectoryForCurrentUser` resolves to the application container while WorkBench is sandboxed. As a result, `~/` initially expanded to `~/Library/Containers/com.example.WorkBench/Data`. Path expansion now reads the login account home from the POSIX password database and falls back to Foundation's named-user lookup. Terminal and Finder therefore resolve `~/` to the actual user home while configuration storage remains sandbox-scoped.
 
-The Terminal adapter initially activated Terminal before sending its `do script` command. During manual verification, a newly created Terminal session appeared to receive the home-directory `cd` twice. The adapter now creates the scripted session before activating Terminal, and automated coverage verifies that ordering. A signed-build retest initially showed a single `cd`, but a later repeated Project launch displayed it twice again. The final directory remained correct, so this is currently an intermittent cosmetic limitation rather than a launch failure. WorkBench retains the explicit directory change for predictable behavior when shell profiles customize their initial directory.
+The Terminal adapter initially activated Terminal before sending its `do script` command. During manual verification, a newly created Terminal session appeared to receive the home-directory `cd` twice. The adapter now creates the scripted session before activating Terminal, and automated coverage verifies that ordering. A signed-build retest initially showed a single `cd`, but a later repeated Project launch displayed it twice again. The final directory remained correct, so this was a cosmetic limitation rather than a launch failure and motivated the home-directory special case below.
+
+Home-relative Terminal sessions stored as `~` or `~/` now create a normal empty
+Terminal session without injecting `cd`. This avoids Terminal's intermittent
+duplicate display for the common home-directory case. Terminal's profile and
+shell startup behavior determine that session's initial directory. All other
+configured paths retain the explicit `cd` so WorkBench continues to enforce the
+requested working directory.
 
 Repeated Project opening was manually verified by comparing application window counts before and after another launch. Safari, Terminal, and Finder each gained exactly one window, confirming that WorkBench does not reuse the previously opened workspace windows. Permission-denial recovery has not yet been manually verified.
 
