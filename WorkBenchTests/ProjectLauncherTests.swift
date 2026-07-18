@@ -95,7 +95,14 @@ final class ProjectLauncherTests: XCTestCase {
         XCTAssertTrue(executor.sources[0].contains("make new document"))
         XCTAssertTrue(executor.sources[0].contains("a\\\"b"))
         XCTAssertTrue(executor.sources[1].contains("tell application \"Google Chrome\""))
+        XCTAssertTrue(executor.sources[1].contains(
+            "set chromeWasRunning to application \"Google Chrome\" is running"
+        ))
+        XCTAssertTrue(executor.sources[1].contains("if chromeWasRunning then"))
         XCTAssertTrue(executor.sources[1].contains("set createdWindow to make new window"))
+        XCTAssertTrue(executor.sources[1].contains("set createdWindow to front window"))
+        XCTAssertTrue(executor.sources[1].contains("repeat 100 times"))
+        XCTAssertTrue(executor.sources[1].contains("delay 0.05"))
         XCTAssertTrue(executor.sources[1].contains("tell createdWindow"))
         XCTAssertTrue(executor.sources[1].contains("make new tab at end of tabs with properties"))
         XCTAssertTrue(executor.sources[1].contains("chrome\\\"tab"))

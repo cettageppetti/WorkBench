@@ -223,6 +223,13 @@ and escaped AppleScript construction. A signed sandboxed launch against the
 real Google Chrome application and permission-denial recovery remain manual
 verification items.
 
+When Automation starts Chrome from a fully quit state, Chrome creates its own
+initial window before handling WorkBench's script. Creating another window
+unconditionally therefore produced two windows. The launcher now records
+whether Chrome was already running: a cold launch reuses Chrome's initial
+window after a bounded five-second wait, while an already-running Chrome still
+receives a new window so repeated Project opens remain independent.
+
 ## Resource removal crash fix
 
 Manual hardening found a crash when a newly added Safari Window was selected and immediately removed. The outgoing SwiftUI property editor reevaluated a binding that captured the Resource's former array index after the Resource had been deleted, causing an out-of-bounds subscript trap.

@@ -112,8 +112,21 @@ struct ChromeLauncher: BrowserLaunching {
             ? "set active tab index to count of tabs"
             : ""
         return executor.execute(source: """
+        set chromeWasRunning to application "Google Chrome" is running
         tell application "Google Chrome"
-            set createdWindow to make new window
+            if chromeWasRunning then
+                set createdWindow to make new window
+            else
+                repeat 100 times
+                    if (count of windows) > 0 then exit repeat
+                    delay 0.05
+                end repeat
+                if (count of windows) > 0 then
+                    set createdWindow to front window
+                else
+                    set createdWindow to make new window
+                end if
+            end if
             tell createdWindow
                 set URL of active tab to \(appleScriptLiteral(firstURL))
                 \(additionalTabs)
