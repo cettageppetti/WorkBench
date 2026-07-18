@@ -119,6 +119,41 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testProjectDeletionCanBeCancelledAndConfirmed() {
+        continueAfterFailure = false
+        let app = launchApp()
+        let starterProject = app.staticTexts["Starter Project"]
+        let secondProject = app.staticTexts["Second Project"]
+        guard starterProject.waitForExistence(timeout: 5),
+              secondProject.waitForExistence(timeout: 2) else {
+            XCTFail("UI-test Projects were not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        secondProject.click()
+        let deleteButton = app.buttons["delete-project-button"]
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: 2))
+        deleteButton.click()
+
+        var alert = app.sheets.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 2))
+        XCTAssertTrue(alert.staticTexts["Delete Project?"].exists)
+        XCTAssertTrue(alert.staticTexts["\"Second Project\" and its JSON configuration file will be deleted."].exists)
+        alert.buttons["Cancel"].click()
+        XCTAssertFalse(alert.waitForExistence(timeout: 1))
+        XCTAssertTrue(secondProject.exists)
+
+        deleteButton.click()
+        alert = app.sheets.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 2))
+        XCTAssertTrue(alert.staticTexts["Delete Project?"].exists)
+        alert.buttons["Delete"].click()
+
+        XCTAssertFalse(secondProject.waitForExistence(timeout: 1))
+        XCTAssertTrue(starterProject.exists)
+    }
+
+    @MainActor
     private func renameSelectedProject(to name: String, in app: XCUIApplication) {
         let nameField = app.textFields["project-name-field"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 2))

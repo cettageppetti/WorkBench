@@ -113,6 +113,7 @@ struct ContentView: View {
                     Button(action: model.confirmDeleteSelectedProject) {
                         Label("Delete Project", systemImage: "trash")
                     }
+                    .accessibilityIdentifier("delete-project-button")
                     .disabled(workflow.draft == nil)
                 }
             }
