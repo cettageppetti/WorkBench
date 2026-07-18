@@ -5,6 +5,7 @@ import Foundation
 enum UITestModelFactory {
     private static let launchArgument = "--workbench-ui-testing"
     private static let launchEnvironmentKey = "WORKBENCH_UI_TESTING"
+    private static let needsDirectoryEnvironmentKey = "WORKBENCH_UI_TEST_NEEDS_DIRECTORY"
     private static var model: WorkBenchApplicationModel?
 
     static func makeIfRequested(
@@ -49,9 +50,11 @@ enum UITestModelFactory {
             terminalLauncher: UITestTerminalLauncher(),
             finderLauncher: UITestFinderLauncher()
         )
-        let directoryAccess = ConfigurationDirectoryAccess(
-            initialStatus: .ready(URL(fileURLWithPath: "/WorkBench"))
-        )
+        let directoryStatus: ConfigurationDirectoryAccess.Status =
+            environment[needsDirectoryEnvironmentKey] == "1"
+            ? .needsSelection(message: "Access to the WorkBench folder has expired. Select it again.")
+            : .ready(URL(fileURLWithPath: "/WorkBench"))
+        let directoryAccess = ConfigurationDirectoryAccess(initialStatus: directoryStatus)
         let model = WorkBenchApplicationModel(
             directoryAccess: directoryAccess,
             workflow: workflow,

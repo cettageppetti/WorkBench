@@ -2,12 +2,30 @@ import XCTest
 
 final class WorkBenchUITests: XCTestCase {
     @MainActor
-    private func launchApp() -> XCUIApplication {
+    private func launchApp(needsConfigurationDirectory: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["--workbench-ui-testing", "-workbenchUITesting", "YES"]
         app.launchEnvironment["WORKBENCH_UI_TESTING"] = "1"
+        if needsConfigurationDirectory {
+            app.launchEnvironment["WORKBENCH_UI_TEST_NEEDS_DIRECTORY"] = "1"
+        }
         app.launch()
         return app
+    }
+
+    @MainActor
+    func testConfigurationDirectoryRecoveryIsPresented() {
+        continueAfterFailure = false
+        let app = launchApp(needsConfigurationDirectory: true)
+
+        XCTAssertTrue(app.staticTexts["Choose Configuration Folder"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts[
+            "Access to the WorkBench folder has expired. Select it again."
+        ].exists)
+        let chooseButton = app.buttons["Choose WorkBench Folder…"]
+        XCTAssertTrue(chooseButton.exists)
+        XCTAssertTrue(chooseButton.isEnabled)
+        XCTAssertFalse(app.outlines["projects-list"].exists)
     }
 
     @MainActor

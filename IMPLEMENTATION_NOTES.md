@@ -214,7 +214,7 @@ The 48-test `WorkBenchTests` target also passes independently. Its login-home
 test now derives the expected home from the POSIX password database because
 Foundation's named-user lookup returns the app-container home under the current
 macOS test sandbox. The complete signed scheme passes all 48 unit tests and all
-eleven UI tests together. Xcode intermittently reports that it cannot collect an OS log
+twelve UI tests together. Xcode intermittently reports that it cannot collect an OS log
 archive because `version.plist` cannot be read; this post-test infrastructure
 warning does not affect test execution or results. Terminal's App Management
 permission may be revoked after command-line UI testing is complete.
@@ -264,3 +264,7 @@ Discard Changes and Save complete the requested close.
 An eleventh end-to-end test invokes Quit WorkBench with dirty edits. It verifies
 that Cancel keeps the process running while Discard Changes and Save allow
 application termination to complete.
+
+A twelfth end-to-end test launches with deterministic expired configuration-folder
+access. It verifies the recovery heading and guidance, enabled folder chooser,
+and absence of the Projects editor until access is restored.
