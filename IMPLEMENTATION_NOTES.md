@@ -213,8 +213,14 @@ xcodebuild test \
 The 48-test `WorkBenchTests` target also passes independently. Its login-home
 test now derives the expected home from the POSIX password database because
 Foundation's named-user lookup returns the app-container home under the current
-macOS test sandbox. The complete signed scheme passes all 48 unit tests and the
-UI test together. Xcode intermittently reports that it cannot collect an OS log
+macOS test sandbox. The complete signed scheme passes all 48 unit tests and both
+UI tests together. Xcode intermittently reports that it cannot collect an OS log
 archive because `version.plist` cannot be read; this post-test infrastructure
 warning does not affect test execution or results. Terminal's App Management
 permission may be revoked after command-line UI testing is complete.
+
+The UI-test fixture now includes a deterministic empty Second Project. A second
+end-to-end test edits a Project and attempts to switch selection three times,
+verifying Cancel, Discard Changes, and Save. Cancel leaves the edit pending so
+the next switch prompts again, Discard restores the repository value before
+switching, and Save persists the renamed Project before completing the switch.

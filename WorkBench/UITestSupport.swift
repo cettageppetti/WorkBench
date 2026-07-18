@@ -17,7 +17,10 @@ enum UITestModelFactory {
                 || defaults.bool(forKey: "workbenchUITesting") else { return nil }
         if let model { return model }
 
-        let repository = UITestProjectRepository(projects: [.starter()])
+        let repository = UITestProjectRepository(projects: [
+            .starter(),
+            Project(name: "Second Project", resources: [])
+        ])
         let workflow = ProjectWorkflow(repository: repository)
         try? workflow.load()
 

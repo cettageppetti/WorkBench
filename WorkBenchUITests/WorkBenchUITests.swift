@@ -35,4 +35,53 @@ final class WorkBenchUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 1))
         XCTAssertTrue(app.staticTexts["Renamed Project"].exists)
     }
+
+    @MainActor
+    func testSwitchingProjectsCanCancelDiscardAndSaveUnsavedChanges() {
+        continueAfterFailure = false
+        let app = launchApp()
+        let starterProject = app.staticTexts["Starter Project"]
+        let secondProject = app.staticTexts["Second Project"]
+        guard starterProject.waitForExistence(timeout: 5),
+              secondProject.waitForExistence(timeout: 2) else {
+            XCTFail("UI-test Projects were not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        renameSelectedProject(to: "Cancelled Rename", in: app)
+        secondProject.click()
+        chooseUnsavedChanges("Cancel", in: app)
+
+        secondProject.click()
+        chooseUnsavedChanges("Discard Changes", in: app)
+        XCTAssertEqual(app.textFields["project-name-field"].value as? String, "Second Project")
+
+        renameSelectedProject(to: "Saved Second Project", in: app)
+        starterProject.click()
+        chooseUnsavedChanges("Save", in: app)
+        XCTAssertTrue(app.staticTexts["Starter Project"].exists)
+        XCTAssertTrue(app.staticTexts["Saved Second Project"].exists)
+        XCTAssertFalse(app.staticTexts["Second Project"].exists)
+    }
+
+    @MainActor
+    private func renameSelectedProject(to name: String, in app: XCUIApplication) {
+        let nameField = app.textFields["project-name-field"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 2))
+        nameField.click()
+        nameField.typeKey("a", modifierFlags: .command)
+        nameField.typeText(name)
+        XCTAssertTrue(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 2))
+    }
+
+    @MainActor
+    private func chooseUnsavedChanges(_ choice: String, in app: XCUIApplication) {
+        let sheet = app.sheets.firstMatch
+        XCTAssertTrue(sheet.waitForExistence(timeout: 2))
+        XCTAssertTrue(sheet.staticTexts["Save changes before continuing?"].exists)
+        let button = sheet.buttons[choice]
+        XCTAssertTrue(button.exists)
+        button.click()
+        XCTAssertFalse(sheet.waitForExistence(timeout: 1))
+    }
 }
