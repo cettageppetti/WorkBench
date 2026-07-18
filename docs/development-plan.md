@@ -80,6 +80,21 @@ AeroSpace operations.
 - Implement Project and Resource validation independently of SwiftUI and external applications.
 - Create the canonical Starter Project factory.
 
+### AeroSpace schema v2 increment
+
+- Add an optional typed Project `launchDestination` with the
+  `aerospace-workspace` variant and lossless unknown-destination preservation.
+- Decode schema v1 as a destination-free Project and encode schema v2 only when
+  a Project is saved; do not bulk-rewrite files during load.
+- Copy launch destinations when duplicating Projects and keep the Starter
+  Project destination-free.
+- Persist machine-specific integration enablement separately in `UserDefaults`,
+  defaulting to disabled; never store executable paths or socket details in
+  Project JSON.
+- Cover v1 migration, v2 round trips, unknown destination preservation,
+  validation, duplication, and disabled-setting behavior with unit tests before
+  adding UI or external AeroSpace calls.
+
 ### Automated tests
 
 - Supported Resource encode/decode round trips

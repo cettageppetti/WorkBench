@@ -164,9 +164,13 @@ The schema should be documented and versioned before persistence code is conside
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "3B06EC67-9A7C-4D66-ACF4-3F869F195C1F",
   "name": "Starter Project",
+  "launchDestination": {
+    "type": "aerospace-workspace",
+    "workspace": "2"
+  },
   "resources": [
     {
       "id": "0D97C7AD-7060-4BB3-B78D-79265770D454",
@@ -192,6 +196,24 @@ The schema should be documented and versioned before persistence code is conside
   ]
 }
 ```
+
+Schema v2 adds the optional Project-level `launchDestination`. Its first typed
+variant is `aerospace-workspace`; an absent destination preserves current
+behavior. Unknown destination types use the same lossless raw-JSON preservation
+principle as unknown Resources and enter placement recovery rather than being
+silently ignored.
+
+The decoder accepts v1 and v2. A v1 Project is represented in memory as v2 with
+no destination, but loading alone never rewrites its file. Any subsequent save
+encodes v2. Newer schema versions remain hard failures. Duplication copies the
+destination while assigning new Project and Resource identifiers.
+
+Machine-specific AeroSpace enablement is deliberately outside Project JSON. A
+typed Settings store backed by `UserDefaults` persists
+`aeroSpaceIntegrationEnabled`, defaulting to `false`. The communication adapter
+owns executable or socket discovery; portable Project files contain neither
+machine paths nor connection details. Disabling integration leaves all Project
+destinations intact.
 
 The filename is `<project-id>.json`. A rename changes `name`, not the filename or identifier.
 

@@ -151,6 +151,9 @@ The order shown in the Resource list is the saved order and the launch order.
 - Disabling integration shall not erase destinations stored in Projects.
 - The Project editor shall offer reported AeroSpace workspaces and permit manual workspace-name entry for offline editing and portability.
 - WorkBench shall require a nonempty workspace name but shall treat AeroSpace as authoritative about availability at launch time.
+- Project schema version 2 shall store the optional destination as a typed `launchDestination`; version 1 Projects shall load without a destination and upgrade only when saved.
+- Unknown launch-destination types shall survive load/save without data loss and shall use the placement failure recovery flow rather than being ignored.
+- Machine-specific enablement shall be stored outside Project JSON and shall default to disabled.
 - WorkBench shall not edit AeroSpace configuration or override its workspace-to-monitor assignments, layouts, keyboard bindings, global application routing, or `on-window-detected` rules.
 - Named native macOS Spaces shall not be supported; WorkBench shall not use private APIs or UI scripting to manipulate them.
 

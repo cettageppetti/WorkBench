@@ -16,13 +16,17 @@ Each filename must be the Project's lowercase UUID followed by `.json`. For exam
 
 Renaming a Project means changing its `name`; do not change its `id` or filename. To create a Project by copying JSON, generate new UUIDs for the Project and every Resource, then rename the file to match the new Project UUID.
 
-## Schema version 1
+## Schema version 2
 
 A complete Project has this shape:
 
 ```json
 {
   "id": "3B06EC67-9A7C-4D66-ACF4-3F869F195C1F",
+  "launchDestination": {
+    "type": "aerospace-workspace",
+    "workspace": "2"
+  },
   "name": "Starter Project",
   "resources": [
     {
@@ -47,7 +51,7 @@ A complete Project has this shape:
       "type": "finder-window"
     }
   ],
-  "schemaVersion": 1
+  "schemaVersion": 2
 }
 ```
 
@@ -55,10 +59,22 @@ Project fields:
 
 | Field | Requirement |
 | --- | --- |
-| `schemaVersion` | Required integer. The only supported value is `1`. |
+| `schemaVersion` | Required integer. Supported values are `1` and `2`; WorkBench writes `2`. |
 | `id` | Required UUID, unique across all Projects. Determines the filename. |
 | `name` | Required nonempty string, unique ignoring case and surrounding whitespace. |
+| `launchDestination` | Optional object. When absent, WorkBench uses normal window placement. |
 | `resources` | Required array. Its order is the launch order. It may be empty. |
+
+The supported launch destination has `type` set to `aerospace-workspace` and a
+nonempty `workspace` string. Workspace names are case-sensitive and are passed
+to AeroSpace exactly as stored. The Project editor trims surrounding whitespace
+from user-entered names, while hand-edited names containing only whitespace are
+invalid.
+
+An otherwise valid destination with an unknown `type` is preserved without data
+loss but cannot be activated. Opening that Project follows the normal placement
+failure flow: no Resource launches until the user chooses **Open Without
+Placement**, or the user may cancel.
 
 Every Resource requires a UUID `id`, a nonempty `name`, and a string `type`. Resource UUIDs must be unique within their Project.
 
@@ -77,7 +93,12 @@ Terminal and Finder paths must be absolute, `~`, or begin with `~/`. WorkBench e
 
 An otherwise valid Resource with an unknown `type` is unsupported rather than invalid. WorkBench preserves its complete JSON object when loading and saving, displays it as unsupported, skips it during launch, and continues launching known Resources. This permits future Resource types to survive round trips through an older WorkBench version.
 
-Do not change `schemaVersion` to a value newer than `1`; an unsupported schema version makes the entire Project unreadable to the MVP.
+### Version 1 compatibility
+
+Version 1 files remain readable and behave as if `launchDestination` were
+absent. WorkBench does not rewrite files merely because it loaded them. The next
+save writes schema version 2. Versions newer than 2 remain unreadable so an
+older WorkBench cannot silently discard fields it does not understand.
 
 ## Resolving errors
 

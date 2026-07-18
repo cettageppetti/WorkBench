@@ -56,6 +56,16 @@ enum ProjectValidator {
             issues.append(.init(field: "name", message: "Project name is required."))
         }
 
+        if case let .aeroSpaceWorkspace(workspace) = project.launchDestination,
+           workspace.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            issues.append(
+                .init(
+                    field: "launchDestination.workspace",
+                    message: "AeroSpace workspace name is required."
+                )
+            )
+        }
+
         let duplicateResourceIDs = duplicates(in: project.resources.map(\.id))
         for duplicateID in duplicateResourceIDs {
             issues.append(

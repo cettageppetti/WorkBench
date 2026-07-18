@@ -37,22 +37,24 @@ struct ResourceID: Codable, Equatable, Hashable, Sendable {
 }
 
 struct Project: Codable, Equatable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     let schemaVersion: Int
     let id: ProjectID
     var name: String
+    var launchDestination: LaunchDestination?
     var resources: [Resource]
 
     init(
         id: ProjectID = ProjectID(),
         name: String,
         resources: [Resource],
-        schemaVersion: Int = currentSchemaVersion
+        launchDestination: LaunchDestination? = nil
     ) {
-        self.schemaVersion = schemaVersion
+        schemaVersion = Self.currentSchemaVersion
         self.id = id
         self.name = name
+        self.launchDestination = launchDestination
         self.resources = resources
     }
 
@@ -62,19 +64,98 @@ struct Project: Codable, Equatable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        let decodedSchemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
 
-        guard schemaVersion == Self.currentSchemaVersion else {
+        guard decodedSchemaVersion == 1 || decodedSchemaVersion == Self.currentSchemaVersion else {
             throw DecodingError.dataCorruptedError(
                 forKey: .schemaVersion,
                 in: container,
-                debugDescription: "Unsupported schema version \(schemaVersion)."
+                debugDescription: "Unsupported schema version \(decodedSchemaVersion)."
             )
         }
 
+        schemaVersion = Self.currentSchemaVersion
         id = try container.decode(ProjectID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
+        launchDestination = decodedSchemaVersion == 1
+            ? nil
+            : try container.decodeIfPresent(LaunchDestination.self, forKey: .launchDestination)
         resources = try container.decode([Resource].self, forKey: .resources)
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(Self.currentSchemaVersion, forKey: .schemaVersion)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encodeIfPresent(launchDestination, forKey: .launchDestination)
+        try container.encode(resources, forKey: .resources)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case id
+        case name
+        case launchDestination
+        case resources
+    }
+}
+
+enum LaunchDestination: Codable, Equatable {
+    case aeroSpaceWorkspace(String)
+    case unsupported(type: String, rawObject: [String: JSONValue])
+
+    var type: String {
+        switch self {
+        case .aeroSpaceWorkspace:
+            "aerospace-workspace"
+        case let .unsupported(type, _):
+            type
+        }
+    }
+
+    init(from decoder: any Decoder) throws {
+        let rawValue = try JSONValue(from: decoder)
+        guard let object = rawValue.objectValue else {
+            throw DecodingError.typeMismatch(
+                [String: JSONValue].self,
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "A launch destination must be a JSON object."
+                )
+            )
+        }
+        guard let type = object["type"]?.stringValue else {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "A launch destination requires a string type."
+                )
+            )
+        }
+
+        if type == "aerospace-workspace" {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self = .aeroSpaceWorkspace(try container.decode(String.self, forKey: .workspace))
+        } else {
+            self = .unsupported(type: type, rawObject: object)
+        }
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        switch self {
+        case let .aeroSpaceWorkspace(workspace):
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(type, forKey: .type)
+            try container.encode(workspace, forKey: .workspace)
+        case let .unsupported(_, rawObject):
+            try JSONValue.object(rawObject).encode(to: encoder)
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+        case workspace
     }
 }
 
@@ -236,7 +317,8 @@ extension Project {
             name: duplicateName,
             resources: resources.map { resource in
                 Resource(id: ResourceID(), name: resource.name, payload: resource.payload)
-            }
+            },
+            launchDestination: launchDestination
         )
     }
 }

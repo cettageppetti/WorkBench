@@ -16,6 +16,22 @@ not erase Project destinations. WorkBench never edits AeroSpace configuration,
 does not override its routing rules, and does not target named native macOS
 Spaces.
 
+## Schema v2 launch-destination foundation
+
+Schema v2 adds an optional typed `launchDestination` object at Project level.
+The initial variant is `aerospace-workspace` with a nonempty `workspace` string.
+Unknown destination types are preserved as raw JSON and use placement recovery
+instead of being silently ignored. Schema v1 remains readable as a Project with
+no destination and is upgraded only on save; load never triggers a bulk rewrite.
+Project duplication copies the destination, while the Starter Project has none.
+
+Machine-specific `aeroSpaceIntegrationEnabled` state belongs in a typed
+`UserDefaults` Settings store and defaults to false. Project JSON never contains
+an executable path or socket detail. The production model, migration,
+validation, Settings store, and persistence tests implement this contract. The
+typed AeroSpace adapter, Settings UI, and Project destination editor remain
+separate follow-up increments.
+
 ## AeroSpace sandbox communication spike
 
 The spike used AeroSpace `0.21.2-Beta` and compared its Homebrew CLI with the

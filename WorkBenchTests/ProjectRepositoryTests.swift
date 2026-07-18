@@ -133,10 +133,38 @@ final class ProjectRepositoryTests: XCTestCase {
         try repository.save(project)
 
         let savedData = try Data(contentsOf: temporaryRoot.appending(path: project.filename))
-        XCTAssertEqual(
-            try JSONDecoder().decode(JSONValue.self, from: savedData),
-            try JSONDecoder().decode(JSONValue.self, from: originalData)
+        guard case var .object(expected) = try JSONDecoder().decode(JSONValue.self, from: originalData) else {
+            return XCTFail("Expected a Project JSON object.")
+        }
+        expected["schemaVersion"] = .number(2)
+        XCTAssertEqual(try JSONDecoder().decode(JSONValue.self, from: savedData), .object(expected))
+    }
+
+    func testLoadingVersionOneDoesNotRewriteFileUntilSave() throws {
+        let projectID = UUID()
+        let originalData = Data("""
+        {
+          "schemaVersion": 1,
+          "id": "\(projectID)",
+          "name": "Legacy",
+          "resources": []
+        }
+        """.utf8)
+        let fileURL = temporaryRoot.appending(path: "\(projectID.uuidString.lowercased()).json")
+        try originalData.write(to: fileURL)
+        let repository = makeRepository(initializationStore: InitializationStoreStub(isInitialized: true))
+
+        let project = try XCTUnwrap(repository.load().projects.first)
+
+        XCTAssertEqual(try Data(contentsOf: fileURL), originalData)
+        XCTAssertEqual(project.schemaVersion, 2)
+        XCTAssertNil(project.launchDestination)
+
+        try repository.save(project)
+        let savedObject = try XCTUnwrap(
+            JSONDecoder().decode(JSONValue.self, from: Data(contentsOf: fileURL)).objectValue
         )
+        XCTAssertEqual(savedObject["schemaVersion"], .number(2))
     }
 
     func testFailedSaveLeavesPreviousFileUsable() throws {
@@ -186,12 +214,14 @@ final class ProjectRepositoryTests: XCTestCase {
     }
 
     func testDuplicateCreatesNewProjectAndResourceIdentifiers() {
-        let original = Project.starter()
+        var original = Project.starter()
+        original.launchDestination = .aeroSpaceWorkspace("work")
 
         let duplicate = original.duplicated(named: "Starter Project Copy")
 
         XCTAssertNotEqual(duplicate.id, original.id)
         XCTAssertEqual(duplicate.name, "Starter Project Copy")
+        XCTAssertEqual(duplicate.launchDestination, original.launchDestination)
         XCTAssertEqual(duplicate.resources.map(\.payload), original.resources.map(\.payload))
         XCTAssertTrue(Set(duplicate.resources.map(\.id)).isDisjoint(with: original.resources.map(\.id)))
     }

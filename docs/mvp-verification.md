@@ -5,33 +5,36 @@ This document tracks verification of the testable requirements in
 evidence so that a successful unit-test run is not mistaken for completion of
 the MVP acceptance scenario.
 
-Status was reviewed on July 17, 2026 against commit `f8f20c2`.
+Status was reviewed on July 18, 2026 against the schema v2 implementation
+working tree following commit `45bd6ec`.
 
 ## Automated verification
 
 The hosted `WorkBenchTests` target covers:
 
-- schema version 1, supported and unsupported Resource round trips, stable
-  identifiers and filenames, validation, path syntax and login-home expansion;
+- schema versions 1 and 2, migration only on explicit save, supported and
+  unsupported Resource and launch-destination round trips, stable identifiers
+  and filenames, validation, path syntax and login-home expansion;
 - Starter Project contents and Resource order;
 - repository initialization, deterministic loading, visible invalid files,
   duplicate detection, atomic-save failure behavior, deletion, reload, and
   unsupported Resource preservation;
 - draft dirty state, explicit save, Save/Discard/Cancel behavior, creation,
   duplication, deletion failure, Resource mutation, and persisted ordering;
-- folder selection, security bookmark restoration, and missing or stale
-  bookmark recovery decisions;
+- folder selection, bookmark restoration, and missing or stale bookmark
+  recovery decisions;
+- machine-local AeroSpace integration enablement, including its disabled
+  default and persistence independently of Project JSON;
 - launch validation, sequential ordering, continuation after failure, missing
   paths, unsupported Resources, and parameterized AppleScript construction; and
 - application-model coordination for creation, Resource commands, unsaved
   selection changes, and consolidated invalid-launch reports.
 
-The signed baseline `xcodebuild test` command passed all 48 unit tests and all twelve macOS
-UI tests before Chrome Window was added. Chrome expands the suite to 49 unit tests
-and thirteen UI tests; the unit suite passes, while a clean signed UI-suite rerun
-is still required. The build emits the expected metadata-extraction warning because WorkBench
-does not link App Intents. Xcode may also fail to collect a post-test OS log
-archive because `version.plist` is unreadable; test execution still succeeds.
+The signed `xcodebuild test` command passes all 55 unit tests and all thirteen
+macOS UI tests. The build emits the expected metadata-extraction warning because
+WorkBench does not link App Intents. Xcode may also report debugger-version
+store noise or fail to collect a post-test OS log archive because
+`version.plist` is unreadable; test execution still succeeds.
 
 The `WorkBenchUITests` target uses an explicitly selected Debug-only in-memory
 repository, synthetic ready directory access, no-op external-application
@@ -86,7 +89,7 @@ repeated during final acceptance verification.
 
 ## Verification still required
 
-The signed unsandboxed suite passes all 48 unit tests and all 13 UI tests. Save
+The signed unsandboxed suite passes all 55 unit tests and all 13 UI tests. Save
 and Open verification uses stable File commands rather than assuming macOS has
 kept trailing toolbar controls outside its overflow menu. The standalone signed
 app build succeeds and contains no App Sandbox entitlement.

@@ -8,7 +8,8 @@ final class ProjectModelTests: XCTestCase {
     func testStarterProjectMatchesAcceptanceScenario() {
         let project = Project.starter()
 
-        XCTAssertEqual(project.schemaVersion, 1)
+        XCTAssertEqual(project.schemaVersion, 2)
+        XCTAssertNil(project.launchDestination)
         XCTAssertEqual(project.name, "Starter Project")
         XCTAssertEqual(project.resources.map(\.type), [
             "browser-window", "terminal-session", "finder-window"
@@ -69,17 +70,75 @@ final class ProjectModelTests: XCTestCase {
         }
 
         let reencoded = try encoder.encode(project)
-        let originalJSON = try decoder.decode(JSONValue.self, from: original)
+        guard case var .object(originalJSON) = try decoder.decode(JSONValue.self, from: original) else {
+            return XCTFail("Expected a Project JSON object.")
+        }
+        originalJSON["schemaVersion"] = .number(2)
         let reencodedJSON = try decoder.decode(JSONValue.self, from: reencoded)
-        XCTAssertEqual(reencodedJSON, originalJSON)
+        XCTAssertEqual(reencodedJSON, .object(originalJSON))
     }
 
     func testNewerSchemaVersionIsRejected() throws {
         let json = """
-        {"schemaVersion": 2, "id": "\(UUID())", "name": "New", "resources": []}
+        {"schemaVersion": 3, "id": "\(UUID())", "name": "New", "resources": []}
         """
 
         XCTAssertThrowsError(try decoder.decode(Project.self, from: Data(json.utf8)))
+    }
+
+    func testVersionOneLoadsWithoutDestinationAndEncodesAsVersionTwo() throws {
+        let json = """
+        {"schemaVersion": 1, "id": "\(UUID())", "name": "Legacy", "resources": []}
+        """
+
+        let project = try decoder.decode(Project.self, from: Data(json.utf8))
+        let encoded = try encoder.encode(project)
+        let object = try XCTUnwrap(decoder.decode(JSONValue.self, from: encoded).objectValue)
+
+        XCTAssertEqual(project.schemaVersion, 2)
+        XCTAssertNil(project.launchDestination)
+        XCTAssertEqual(object["schemaVersion"], .number(2))
+        XCTAssertNil(object["launchDestination"])
+    }
+
+    func testAeroSpaceDestinationRoundTrips() throws {
+        let project = Project(
+            name: "Placed",
+            resources: [],
+            launchDestination: .aeroSpaceWorkspace("2")
+        )
+
+        let decoded = try decoder.decode(Project.self, from: encoder.encode(project))
+
+        XCTAssertEqual(decoded, project)
+        XCTAssertEqual(decoded.launchDestination, .aeroSpaceWorkspace("2"))
+    }
+
+    func testUnsupportedDestinationRoundTripsWithoutDataLoss() throws {
+        let json = """
+        {
+          "schemaVersion": 2,
+          "id": "\(UUID())",
+          "name": "Future Placement",
+          "launchDestination": {
+            "type": "future-placement",
+            "enabled": true,
+            "nested": {"value": 9007199254740993}
+          },
+          "resources": []
+        }
+        """
+        let original = Data(json.utf8)
+        let project = try decoder.decode(Project.self, from: original)
+
+        guard case .unsupported = project.launchDestination else {
+            return XCTFail("Expected an unsupported launch destination.")
+        }
+
+        XCTAssertEqual(
+            try decoder.decode(JSONValue.self, from: encoder.encode(project)),
+            try decoder.decode(JSONValue.self, from: original)
+        )
     }
 
     func testStableFilenameUsesProjectIdentifier() {
@@ -169,12 +228,14 @@ final class ProjectModelTests: XCTestCase {
                     name: "Terminal",
                     payload: .terminalSession(TerminalSession(workingDirectory: "relative"))
                 )
-            ]
+            ],
+            launchDestination: .aeroSpaceWorkspace(" \n")
         )
 
         let issues = ProjectValidator.validate(project)
 
         XCTAssertTrue(issues.contains { $0.field == "name" })
+        XCTAssertTrue(issues.contains { $0.field == "launchDestination.workspace" })
         XCTAssertTrue(issues.contains { $0.field == "resources[0].name" })
         XCTAssertTrue(issues.contains { $0.field == "resources[0].tabs" })
         XCTAssertTrue(issues.contains { $0.field == "resources[1].tabs[0]" })

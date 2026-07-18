@@ -26,6 +26,8 @@
 		100000000000000000000018 /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000021 /* UITestSupport.swift */; };
 		100000000000000000000019 /* WorkBenchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000022 /* WorkBenchUITests.swift */; };
 		100000000000000000000020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000024 /* Assets.xcassets */; };
+		100000000000000000000021 /* AeroSpaceIntegrationSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000025 /* AeroSpaceIntegrationSettings.swift */; };
+		100000000000000000000022 /* AeroSpaceIntegrationSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000026 /* AeroSpaceIntegrationSettingsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,6 +71,8 @@
 		200000000000000000000022 /* WorkBenchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkBenchUITests.swift; sourceTree = "<group>"; };
 		200000000000000000000023 /* WorkBenchUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkBenchUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		200000000000000000000024 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		200000000000000000000025 /* AeroSpaceIntegrationSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AeroSpaceIntegrationSettings.swift; sourceTree = "<group>"; };
+		200000000000000000000026 /* AeroSpaceIntegrationSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AeroSpaceIntegrationSettingsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,6 +118,7 @@
 				200000000000000000000002 /* ContentView.swift */,
 				200000000000000000000003 /* WorkBench.entitlements */,
 				200000000000000000000007 /* ConfigurationDirectoryAccess.swift */,
+				200000000000000000000025 /* AeroSpaceIntegrationSettings.swift */,
 				200000000000000000000009 /* JSONValue.swift */,
 				200000000000000000000010 /* ProjectModel.swift */,
 				200000000000000000000011 /* ProjectValidation.swift */,
@@ -135,6 +140,7 @@
 				200000000000000000000016 /* ProjectWorkflowTests.swift */,
 				200000000000000000000018 /* WorkBenchApplicationModelTests.swift */,
 				200000000000000000000020 /* ProjectLauncherTests.swift */,
+				200000000000000000000026 /* AeroSpaceIntegrationSettingsTests.swift */,
 			);
 			path = WorkBenchTests;
 			sourceTree = "<group>";
@@ -296,6 +302,7 @@
 				100000000000000000000002 /* ContentView.swift in Sources */,
 				100000000000000000000001 /* WorkBenchApp.swift in Sources */,
 				100000000000000000000004 /* ConfigurationDirectoryAccess.swift in Sources */,
+				100000000000000000000021 /* AeroSpaceIntegrationSettings.swift in Sources */,
 				100000000000000000000006 /* JSONValue.swift in Sources */,
 				100000000000000000000007 /* ProjectModel.swift in Sources */,
 				100000000000000000000008 /* ProjectValidation.swift in Sources */,
@@ -317,6 +324,7 @@
 				100000000000000000000013 /* ProjectWorkflowTests.swift in Sources */,
 				100000000000000000000015 /* WorkBenchApplicationModelTests.swift in Sources */,
 				100000000000000000000017 /* ProjectLauncherTests.swift in Sources */,
+				100000000000000000000022 /* AeroSpaceIntegrationSettingsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

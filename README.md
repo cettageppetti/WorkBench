@@ -36,7 +36,7 @@ On first launch, WorkBench creates a **Starter Project** that opens:
 - [Product requirements](docs/product-requirements.md) — testable MVP behavior and acceptance criteria
 - [Architecture](docs/architecture.md) — technical boundaries and design decisions
 - [Development plan](docs/development-plan.md) — phased implementation and verification plan
-- [Configuration guide](docs/configuration.md) — schema version 1 and safe hand-editing guidance
+- [Configuration guide](docs/configuration.md) — schema versions 1–2 and safe hand-editing guidance
 - [MVP verification status](docs/mvp-verification.md) — automated, manual, and remaining acceptance coverage
 
 The design specification should change only when the product vision changes. Implementation discoveries should be recorded separately as the codebase develops.
