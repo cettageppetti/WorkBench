@@ -106,15 +106,18 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItemGroup {
                     Button(action: model.createProject) { Label("New Project", systemImage: "plus") }
+                        .labelStyle(.titleAndIcon)
                         .accessibilityIdentifier("new-project-button")
                     Button(action: model.duplicateSelectedProject) {
                         Label("Duplicate Project", systemImage: "plus.square.on.square")
                     }
+                    .labelStyle(.titleAndIcon)
                     .accessibilityIdentifier("duplicate-project-button")
                     .disabled(workflow.draft == nil)
                     Button(action: model.confirmDeleteSelectedProject) {
                         Label("Delete Project", systemImage: "trash")
                     }
+                    .labelStyle(.titleAndIcon)
                     .accessibilityIdentifier("delete-project-button")
                     .disabled(workflow.draft == nil)
                 }
@@ -159,9 +162,11 @@ struct ContentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Open Project", systemImage: "play.fill", action: model.openSelectedProject)
+                    .labelStyle(.titleAndIcon)
                     .accessibilityIdentifier("open-project-button")
                     .disabled(workflow.draft == nil)
                 Button("Save", systemImage: "square.and.arrow.down", action: model.save)
+                    .labelStyle(.titleAndIcon)
                     .accessibilityIdentifier("save-project-button")
                     .disabled(!workflow.isDirty)
             }

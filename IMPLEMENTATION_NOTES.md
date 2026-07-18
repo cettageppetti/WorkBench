@@ -153,6 +153,14 @@ The spike screen has been replaced by a conventional single-window macOS editor 
 
 The application uses a SwiftUI `Window` scene rather than a multi-window group. Save and Reload Configurations are standard menu commands; Reload uses Command-Shift-R. No status-bar item is created. Project launching is intentionally absent from this phase and will connect to the proven Automation adapters through the Phase 6 launch coordinator.
 
+Manual hardening verified keyboard traversal, arrow-key list navigation, form
+focus, dirty-state behavior, and VoiceOver labels. The 840×520 minimum and a
+large window layout remain practical. The initial automatic toolbar style kept
+all actions icon-only even with ample width, making Open Project difficult to
+discover. New, Duplicate, Delete, Open Project, and Save now explicitly use
+title-and-icon labels; at minimum width, Open Project and Save move into the
+native overflow menu without overlap.
+
 Xcode 26.6's Swift compiler crashed during IR generation for a direct method-reference conversion used as a `Binding<ProjectID?>` setter. An equivalent explicit closure avoids the compiler defect. The initial restricted command-line build also could not run the Swift Observation macro service; normal Xcode build access is required, as already observed for SwiftUI macros in the baseline.
 
 ## Phase 6 Resource launch coordination
