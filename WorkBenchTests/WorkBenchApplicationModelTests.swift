@@ -36,6 +36,16 @@ final class WorkBenchApplicationModelTests: XCTestCase {
         XCTAssertNotNil(addedID)
     }
 
+    func testChromeResourceUsesDistinctTypeAndDefaultName() throws {
+        let workflow = try makeWorkflow(projects: [Project(name: "Project", resources: [])])
+        let model = WorkBenchApplicationModel(workflow: workflow)
+
+        model.addResource(.chromeWindow(BrowserWindow(tabs: ["https://google.com"])))
+
+        XCTAssertEqual(workflow.draft?.resources.first?.name, "Chrome Window")
+        XCTAssertEqual(workflow.draft?.resources.first?.type, "chrome-window")
+    }
+
     func testDirtyProjectSelectionPresentsSharedUnsavedDialog() throws {
         let first = Project(name: "First", resources: [])
         let second = Project(name: "Second", resources: [])

@@ -67,6 +67,7 @@ Supported Resource payloads:
 | `type` | Required payload | Behavior |
 | --- | --- | --- |
 | `browser-window` | `tabs`: nonempty array of URL strings with schemes | Opens one new Safari window with tabs in array order. Any URL scheme Safari supports is allowed. |
+| `chrome-window` | `tabs`: nonempty array of URL strings with schemes | Opens one new Google Chrome window with tabs in array order. Any URL scheme Chrome supports is allowed. |
 | `terminal-session` | `workingDirectory`: path string | Opens one new Terminal window and explicitly changes to the resolved directory. |
 | `finder-window` | `folder`: path string | Opens one new Finder window showing the resolved directory. |
 

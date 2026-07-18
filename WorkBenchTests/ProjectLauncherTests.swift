@@ -8,6 +8,7 @@ final class ProjectLauncherTests: XCTestCase {
         let recorder = InvocationRecorder()
         let launcher = ProjectLauncher(
             browserLauncher: BrowserLauncherStub(recorder: recorder, error: "Safari denied"),
+            chromeLauncher: ChromeLauncherStub(recorder: recorder, error: "Chrome denied"),
             terminalLauncher: TerminalLauncherStub(recorder: recorder),
             finderLauncher: FinderLauncherStub(recorder: recorder)
         )
@@ -17,15 +18,23 @@ final class ProjectLauncherTests: XCTestCase {
         )
         var project = Project.starter()
         project.resources.insert(unsupported, at: 1)
+        project.resources.insert(
+            Resource(
+                name: "Chrome",
+                payload: .chromeWindow(BrowserWindow(tabs: ["https://google.com"]))
+            ),
+            at: 2
+        )
 
         let report = launcher.open(project)
 
-        XCTAssertEqual(recorder.applications, ["Safari", "Terminal", "Finder"])
+        XCTAssertEqual(recorder.applications, ["Safari", "Chrome", "Terminal", "Finder"])
         XCTAssertTrue(report.didLaunch)
         XCTAssertTrue(report.hasProblems)
         XCTAssertEqual(report.results.map(\.outcome), [
             .failed("Safari denied"),
             .skipped("Resource type \"future\" is unsupported."),
+            .failed("Chrome denied"),
             .succeeded,
             .succeeded
         ])
@@ -72,6 +81,9 @@ final class ProjectLauncherTests: XCTestCase {
         XCTAssertNil(SafariLauncher(executor: executor).open(
             BrowserWindow(tabs: ["https://example.com/a\"b", "file:///tmp/example"])
         ))
+        XCTAssertNil(ChromeLauncher(executor: executor).open(
+            BrowserWindow(tabs: ["https://example.com/chrome\"tab", "file:///tmp/chrome"])
+        ))
         XCTAssertNil(TerminalLauncher(executor: executor).open(
             TerminalSession(workingDirectory: directory.path)
         ))
@@ -79,18 +91,24 @@ final class ProjectLauncherTests: XCTestCase {
             FinderWindow(folder: directory.path)
         ))
 
-        XCTAssertEqual(executor.sources.count, 3)
+        XCTAssertEqual(executor.sources.count, 4)
         XCTAssertTrue(executor.sources[0].contains("make new document"))
         XCTAssertTrue(executor.sources[0].contains("a\\\"b"))
-        XCTAssertTrue(executor.sources[1].contains("do script"))
-        XCTAssertTrue(executor.sources[1].contains("do script (\"cd -- \" & quoted form of"))
+        XCTAssertTrue(executor.sources[1].contains("tell application \"Google Chrome\""))
+        XCTAssertTrue(executor.sources[1].contains("set createdWindow to make new window"))
+        XCTAssertTrue(executor.sources[1].contains("tell createdWindow"))
+        XCTAssertTrue(executor.sources[1].contains("make new tab at end of tabs with properties"))
+        XCTAssertTrue(executor.sources[1].contains("chrome\\\"tab"))
+        XCTAssertTrue(executor.sources[1].contains("set active tab index to count of tabs"))
+        XCTAssertTrue(executor.sources[2].contains("do script"))
+        XCTAssertTrue(executor.sources[2].contains("do script (\"cd -- \" & quoted form of"))
         XCTAssertLessThan(
-            try XCTUnwrap(executor.sources[1].range(of: "do script")?.lowerBound),
-            try XCTUnwrap(executor.sources[1].range(of: "activate")?.lowerBound)
+            try XCTUnwrap(executor.sources[2].range(of: "do script")?.lowerBound),
+            try XCTUnwrap(executor.sources[2].range(of: "activate")?.lowerBound)
         )
-        XCTAssertTrue(executor.sources[1].contains("WorkBench Launcher \\\"Test\\\""))
-        XCTAssertTrue(executor.sources[2].contains("make new Finder window"))
         XCTAssertTrue(executor.sources[2].contains("WorkBench Launcher \\\"Test\\\""))
+        XCTAssertTrue(executor.sources[3].contains("make new Finder window"))
+        XCTAssertTrue(executor.sources[3].contains("WorkBench Launcher \\\"Test\\\""))
     }
 }
 
@@ -111,6 +129,22 @@ private struct BrowserLauncherStub: BrowserLaunching {
 
     func open(_ browser: BrowserWindow) -> String? {
         recorder.applications.append("Safari")
+        return error
+    }
+}
+
+@MainActor
+private struct ChromeLauncherStub: BrowserLaunching {
+    let recorder: InvocationRecorder
+    var error: String?
+
+    init(recorder: InvocationRecorder, error: String? = nil) {
+        self.recorder = recorder
+        self.error = error
+    }
+
+    func open(_ browser: BrowserWindow) -> String? {
+        recorder.applications.append("Chrome")
         return error
     }
 }

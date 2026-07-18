@@ -124,7 +124,8 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
     func addResource(_ payload: ResourcePayload) {
         let name: String
         switch payload {
-        case .browserWindow: name = "Browser Window"
+        case .browserWindow: name = "Safari Window"
+        case .chromeWindow: name = "Chrome Window"
         case .terminalSession: name = "Terminal Session"
         case .finderWindow: name = "Finder Window"
         case .unsupported: return

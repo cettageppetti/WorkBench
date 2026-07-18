@@ -30,7 +30,7 @@ WorkBench SwiftUI application
   `-- opens/automates -> Finder
 ```
 
-WorkBench owns Project definitions and launch coordination. macOS owns permissions and window management. Safari, Terminal, and Finder remain responsible for their own content and behavior.
+WorkBench owns Project definitions and launch coordination. macOS owns permissions and window management. Safari, Chrome, Terminal, and Finder remain responsible for their own content and behavior.
 
 ## Internal boundaries
 
@@ -71,6 +71,7 @@ Resource
   name: String
   payload:
     browserWindow(tabs)
+    chromeWindow(tabs)
     terminalSession(workingDirectory)
     finderWindow(folder)
     unsupported(type, rawObject)
@@ -109,7 +110,7 @@ Open Project
   -> return consolidated LaunchReport
 ```
 
-Suggested boundaries are `BrowserLaunching`, `TerminalLaunching`, and `FinderLaunching`. Production adapters communicate with macOS; test doubles return deterministic outcomes.
+Suggested boundaries are `BrowserLaunching`, `TerminalLaunching`, and `FinderLaunching`. Separate Safari and Chrome adapters conform to `BrowserLaunching`; production adapters communicate with macOS and test doubles return deterministic outcomes.
 
 Apple Events and scripting details belong inside the adapters. The architecture does not expose scripts as part of the Project model because Projects describe desired state, not implementation steps.
 
@@ -183,9 +184,9 @@ Path resolution expands a leading `~` using the current user's home directory. O
 
 The app should use the narrowest reliable system interface for each Resource. Finder may be opened through workspace APIs when they guarantee the required behavior; Apple Events should be used only when a new, specifically configured window cannot otherwise be guaranteed.
 
-Safari and Terminal integration will likely require Automation access. The Xcode target will need appropriate sandbox entitlements and usage descriptions. Permission denial is a normal adapter failure, not a fatal application error.
+Safari, Chrome, and Terminal integration require Automation access. The Xcode target needs appropriate sandbox entitlements and usage descriptions. Permission denial is a normal adapter failure, not a fatal application error.
 
-The Phase 1 spike confirmed that Safari, Terminal, and Finder do not expose public sandbox scripting access groups sufficient for the MVP operations. In addition to the hardened-runtime Apple Events entitlement and usage description, the sandboxed MVP uses temporary Apple Event exceptions limited to those three bundle identifiers. This creates a future Mac App Store review risk and must be reassessed before distribution.
+The Phase 1 spike confirmed that Safari, Terminal, and Finder do not expose public sandbox scripting access groups sufficient for the MVP operations. In addition to the hardened-runtime Apple Events entitlement and usage description, the sandboxed app uses temporary Apple Event exceptions limited to Safari, Chrome, Terminal, and Finder. This creates a future Mac App Store review risk and must be reassessed before distribution. Chrome still requires signed integration verification.
 
 Before the main UI is built out, a technical spike should verify:
 

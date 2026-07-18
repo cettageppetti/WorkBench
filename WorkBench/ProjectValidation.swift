@@ -74,20 +74,9 @@ enum ProjectValidator {
 
             switch resource.payload {
             case let .browserWindow(browser):
-                if browser.tabs.isEmpty {
-                    issues.append(
-                        .init(field: "\(prefix).tabs", message: "At least one Safari tab is required.")
-                    )
-                }
-                for (tabIndex, tab) in browser.tabs.enumerated()
-                    where URL(string: tab)?.scheme == nil {
-                    issues.append(
-                        .init(
-                            field: "\(prefix).tabs[\(tabIndex)]",
-                            message: "Enter a URL Safari can open."
-                        )
-                    )
-                }
+                validateBrowser(browser, applicationName: "Safari", prefix: prefix, issues: &issues)
+            case let .chromeWindow(browser):
+                validateBrowser(browser, applicationName: "Chrome", prefix: prefix, issues: &issues)
             case let .terminalSession(terminal):
                 validatePath(terminal.workingDirectory, field: "\(prefix).workingDirectory", into: &issues)
             case let .finderWindow(finder):
@@ -98,6 +87,28 @@ enum ProjectValidator {
         }
 
         return issues
+    }
+
+    private static func validateBrowser(
+        _ browser: BrowserWindow,
+        applicationName: String,
+        prefix: String,
+        issues: inout [ProjectValidationIssue]
+    ) {
+        if browser.tabs.isEmpty {
+            issues.append(
+                .init(field: "\(prefix).tabs", message: "At least one \(applicationName) tab is required.")
+            )
+        }
+        for (tabIndex, tab) in browser.tabs.enumerated()
+            where URL(string: tab)?.scheme == nil {
+            issues.append(
+                .init(
+                    field: "\(prefix).tabs[\(tabIndex)]",
+                    message: "Enter a URL \(applicationName) can open."
+                )
+            )
+        }
     }
 
     static func validateCollection(_ projects: [Project]) -> [ProjectValidationIssue] {

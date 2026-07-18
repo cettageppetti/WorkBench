@@ -93,7 +93,8 @@ Resources are intentionally independent.
 
 Examples include:
 
-- Browser Window
+- Safari Window
+- Chrome Window
 - Browser Tab
 - Terminal Session
 - Finder Window
@@ -202,9 +203,20 @@ Projects persist across application launches.
 
 # Supported Resource Types
 
-## Browser Window
+## Safari Window
 
 Launch Safari.
+
+Contains one or more tabs.
+
+Properties:
+
+- Name
+- Tabs
+
+## Chrome Window
+
+Launch Google Chrome.
 
 Contains one or more tabs.
 
@@ -245,7 +257,7 @@ Do not implement:
 - AeroSpace integration
 - Window placement
 - Window sizing
-- Browser selection
+- Browsers other than Safari and Google Chrome
 - Terminal selection
 - Plugins
 - Variables
@@ -396,7 +408,7 @@ resources:
 +----------------+-------------------+----------------------+
 | Projects       | Resources         | Properties           |
 |                |                   |                      |
-| AeroPeek       | Browser Window    | Resource Settings    |
+| AeroPeek       | Safari Window     | Resource Settings    |
 | Networking     | Terminal Session  |                      |
 | Investments    | Finder Window     |                      |
 |                |                   |                      |

@@ -209,6 +209,37 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testChromeWindowCanBeAddedEditedAndSaved() {
+        continueAfterFailure = false
+        let app = launchApp()
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        let addResource = app.descendants(matching: .any)["Add Resource"]
+        XCTAssertTrue(addResource.waitForExistence(timeout: 2))
+        addResource.click()
+        let chromeMenuItem = app.menuItems["Chrome Window"]
+        XCTAssertTrue(chromeMenuItem.waitForExistence(timeout: 2))
+        chromeMenuItem.click()
+
+        XCTAssertTrue(app.staticTexts["Chrome Window"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Chrome Tabs"].exists)
+        replaceText(
+            in: app.textFields["browser-tab-0-field"],
+            with: "https://chromium.org"
+        )
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 1))
+        XCTAssertEqual(
+            app.textFields["browser-tab-0-field"].value as? String,
+            "https://chromium.org"
+        )
+    }
+
+    @MainActor
     func testResourcesCanBeReorderedAndSaved() {
         continueAfterFailure = false
         let app = launchApp()

@@ -26,8 +26,10 @@ The hosted `WorkBenchTests` target covers:
 - application-model coordination for creation, Resource commands, unsaved
   selection changes, and consolidated invalid-launch reports.
 
-The signed `xcodebuild test` command passes all 48 unit tests and all twelve macOS
-UI tests. The build emits the expected metadata-extraction warning because WorkBench
+The signed baseline `xcodebuild test` command passed all 48 unit tests and all twelve macOS
+UI tests before Chrome Window was added. Chrome expands the suite to 49 unit tests
+and thirteen UI tests; the unit suite passes, while a clean signed UI-suite rerun
+is still required. The build emits the expected metadata-extraction warning because WorkBench
 does not link App Intents. Xcode may also fail to collect a post-test OS log
 archive because `version.plist` is unreadable; test execution still succeeds.
 
@@ -76,7 +78,7 @@ recovery guidance, enabled chooser action, and hidden Projects editor.
   into native overflow without overlap at the minimum size.
 - Starter Project opens new Safari, Terminal, and Finder windows in order.
 - Reopening Starter Project creates one additional window in each application.
-- Adding, selecting, and immediately removing a Browser Window no longer
+- Adding, selecting, and immediately removing a Safari Window no longer
   crashes after the stable-identifier binding fix.
 
 These results are recorded in `../IMPLEMENTATION_NOTES.md` and should be
@@ -94,8 +96,10 @@ back door or weaken the sandbox and Automation boundaries.
 ### Manual acceptance and permissions
 
 - Exercise Automation permission denial and revocation independently for
-  Safari, Terminal, and Finder; verify later Resources are still attempted and
+  Safari, Chrome, Terminal, and Finder; verify later Resources are still attempted and
   recovery guidance names the affected application.
+- Verify a signed sandboxed Chrome Window launch creates a new window with tabs
+  in saved order and that repeated launch creates another window.
 - Run the complete acceptance scenario from a clean configuration and clean
   privacy-permission state.
 - Measure UI responsiveness during repository operations and a complete

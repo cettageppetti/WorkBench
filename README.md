@@ -1,12 +1,12 @@
 # WorkBench
 
-WorkBench is a native macOS application for defining, saving, and opening complete working environments. Instead of launching applications one at a time, a user opens a Project composed of Resources such as Safari windows, Terminal sessions, and Finder windows.
+WorkBench is a native macOS application for defining, saving, and opening complete working environments. Instead of launching applications one at a time, a user opens a Project composed of Resources such as Safari and Chrome windows, Terminal sessions, and Finder windows.
 
 The MVP is intended first for its developer, while keeping the core Project–Resource model flexible enough for other Mac power users and software developers.
 
 ## Status
 
-WorkBench has a native three-column SwiftUI editor, a versioned Project/Resource domain model, a tested JSON Project repository and draft workflow, and production Project launching for Safari, Terminal, and Finder. MVP hardening and broader manual verification remain.
+WorkBench has a native three-column SwiftUI editor, a versioned Project/Resource domain model, a tested JSON Project repository and draft workflow, and production Project launching for Safari, Chrome, Terminal, and Finder. MVP hardening and broader manual verification remain.
 
 The MVP will answer one question: can a user describe a working environment as a collection of Resources and reliably recreate it with one action?
 
@@ -15,6 +15,7 @@ The MVP will answer one question: can a user describe a working environment as a
 - Create, rename, duplicate, delete, save, and open Projects.
 - Add, edit, remove, and reorder Resources.
 - Open Safari windows containing configured tabs.
+- Open Chrome windows containing configured tabs.
 - Open Terminal windows at configured directories.
 - Open Finder windows at configured folders.
 - Store one human-readable JSON file per Project in `~/Documents/WorkBench`.
@@ -73,4 +74,4 @@ Never use `CODE_SIGNING_ALLOWED=NO` for a run that includes
 
 ## Scope
 
-The MVP intentionally excludes workspace capture, window placement, alternative browsers or terminals, synchronization, plugins, variables, conditional workflows, AI features, SSH, and Docker. See the product requirements for the complete list.
+The MVP intentionally excludes workspace capture, window placement, additional browsers or terminals, synchronization, plugins, variables, conditional workflows, AI features, SSH, and Docker. See the product requirements for the complete list.

@@ -72,7 +72,7 @@ The order shown in the Resource list is the saved order and the launch order.
 - WorkBench shall persist initialization state separately from the presence of Project files, so deleting Starter Project does not cause it to reappear.
 - Starter Project shall contain, in order:
 
-  1. a Safari Browser Window with tabs for `https://apple.com` and `https://ibm.com`;
+  1. a Safari Window with tabs for `https://apple.com` and `https://ibm.com`;
   2. a Terminal Session with working directory `~/`; and
   3. a Finder Window with folder `~/`.
 
@@ -89,7 +89,7 @@ The order shown in the Resource list is the saved order and the launch order.
 
 - The user shall be able to add, select, edit, remove, and reorder Resources.
 - Resource order shall be changed by drag and drop and persisted on Save.
-- The MVP shall offer Browser Window, Terminal Session, and Finder Window Resource types.
+- WorkBench shall offer Safari Window, Chrome Window, Terminal Session, and Finder Window Resource types.
 - Removing a Resource modifies only the in-memory draft until the Project is saved.
 
 ### Explicit save and unsaved changes
@@ -121,7 +121,7 @@ The order shown in the Resource list is the saved order and the launch order.
 ### Validation
 
 - Validation messages shall identify the affected Project, Resource, property, or file where possible.
-- Browser tab values shall be syntactically valid URLs. WorkBench shall not restrict URLs to `http` or `https`; any URL Safari supports is allowed.
+- Browser tab values shall be syntactically valid URLs. WorkBench shall not restrict URLs to `http` or `https`; any URL the selected Resource's browser supports is allowed.
 - Terminal and Finder paths shall be either absolute or home-relative using `~`.
 - A missing or inaccessible path is a launch-time Resource failure and shall not stop subsequent Resources.
 - Duplicate stable identifiers, missing required fields, duplicate Project names, and unsupported schema versions shall be reported clearly.
@@ -139,12 +139,19 @@ The order shown in the Resource list is the saved order and the launch order.
 
 ### Supported Resource behavior
 
-#### Browser Window
+#### Safari Window
 
 - Opens a new Safari window.
 - Opens its configured tabs in saved order.
 - Supports one or more tabs.
 - Reports malformed URLs, denied Automation permission, Safari launch failures, and scripting failures.
+
+#### Chrome Window
+
+- Opens a new Google Chrome window.
+- Opens its configured tabs in saved order.
+- Supports one or more tabs.
+- Reports malformed URLs, denied Automation permission, Chrome launch failures, and scripting failures.
 
 #### Terminal Session
 
@@ -182,7 +189,7 @@ The order shown in the Resource list is the saved order and the launch order.
 - Capturing the current workspace
 - Detecting or reusing existing application windows
 - Window placement, sizing, or layout
-- Browsers other than Safari
+- Browsers other than Safari and Google Chrome
 - Terminals other than Terminal.app
 - Startup commands
 - Menu-bar status item behavior

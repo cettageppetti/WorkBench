@@ -117,8 +117,11 @@ struct ContentView: View {
             .safeAreaInset(edge: .bottom) {
                 HStack {
                     Menu {
-                        Button("Browser Window") {
+                        Button("Safari Window") {
                             model.addResource(.browserWindow(BrowserWindow(tabs: ["https://apple.com"])))
+                        }
+                        Button("Chrome Window") {
+                            model.addResource(.chromeWindow(BrowserWindow(tabs: ["https://google.com"])))
                         }
                         Button("Terminal Session") {
                             model.addResource(.terminalSession(TerminalSession(workingDirectory: "~/")))
@@ -219,30 +222,9 @@ struct ContentView: View {
     private func resourceFields(resource: Resource, workflow: ProjectWorkflow) -> some View {
         switch resource.payload {
         case let .browserWindow(browser):
-            Section("Safari Tabs") {
-                ForEach(browser.tabs.indices, id: \.self) { tabIndex in
-                    TextField("URL", text: browserTabBinding(resource.id, tabIndex, workflow))
-                }
-                Button("Add Tab") {
-                    model.updateDraft { project in
-                        guard let index = project.resources.firstIndex(where: { $0.id == resource.id }),
-                              case var .browserWindow(currentBrowser) = project.resources[index].payload else { return }
-                        currentBrowser.tabs.append("https://")
-                        project.resources[index].payload = .browserWindow(currentBrowser)
-                    }
-                }
-                if browser.tabs.count > 1 {
-                    Button("Remove Last Tab") {
-                        model.updateDraft { project in
-                            guard let index = project.resources.firstIndex(where: { $0.id == resource.id }),
-                                  case var .browserWindow(currentBrowser) = project.resources[index].payload,
-                                  currentBrowser.tabs.count > 1 else { return }
-                            currentBrowser.tabs.removeLast()
-                            project.resources[index].payload = .browserWindow(currentBrowser)
-                        }
-                    }
-                }
-            }
+            browserFields(browser, kind: .safari, resourceID: resource.id, workflow: workflow)
+        case let .chromeWindow(browser):
+            browserFields(browser, kind: .chrome, resourceID: resource.id, workflow: workflow)
         case let .terminalSession(terminal):
             TextField("Working Directory", text: payloadStringBinding(
                 terminal.workingDirectory, resourceID: resource.id,
@@ -258,6 +240,40 @@ struct ContentView: View {
             LabeledContent("Type", value: type)
             Label("This Resource type is unsupported. Its JSON will be preserved.", systemImage: "questionmark.diamond")
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func browserFields(
+        _ browser: BrowserWindow,
+        kind: BrowserKind,
+        resourceID: ResourceID,
+        workflow: ProjectWorkflow
+    ) -> some View {
+        Section(kind.sectionTitle) {
+            ForEach(browser.tabs.indices, id: \.self) { tabIndex in
+                TextField("URL", text: browserTabBinding(resourceID, tabIndex, kind, workflow))
+                    .accessibilityIdentifier("browser-tab-\(tabIndex)-field")
+            }
+            Button("Add Tab") {
+                model.updateDraft { project in
+                    guard let index = project.resources.firstIndex(where: { $0.id == resourceID }),
+                          var currentBrowser = kind.browser(from: project.resources[index].payload) else { return }
+                    currentBrowser.tabs.append("https://")
+                    project.resources[index].payload = kind.payload(currentBrowser)
+                }
+            }
+            if browser.tabs.count > 1 {
+                Button("Remove Last Tab") {
+                    model.updateDraft { project in
+                        guard let index = project.resources.firstIndex(where: { $0.id == resourceID }),
+                              var currentBrowser = kind.browser(from: project.resources[index].payload),
+                              currentBrowser.tabs.count > 1 else { return }
+                        currentBrowser.tabs.removeLast()
+                        project.resources[index].payload = kind.payload(currentBrowser)
+                    }
+                }
+            }
         }
     }
 
@@ -286,20 +302,21 @@ struct ContentView: View {
     private func browserTabBinding(
         _ resourceID: ResourceID,
         _ tabIndex: Int,
+        _ kind: BrowserKind,
         _ workflow: ProjectWorkflow
     ) -> Binding<String> {
         Binding(get: {
             guard let resource = workflow.draft?.resources.first(where: { $0.id == resourceID }),
-                  case let .browserWindow(browser) = resource.payload,
+                  let browser = kind.browser(from: resource.payload),
                   browser.tabs.indices.contains(tabIndex) else { return "" }
             return browser.tabs[tabIndex]
         }, set: { value in
             model.updateDraft { project in
                 guard let index = project.resources.firstIndex(where: { $0.id == resourceID }),
-                      case var .browserWindow(browser) = project.resources[index].payload,
+                      var browser = kind.browser(from: project.resources[index].payload),
                       browser.tabs.indices.contains(tabIndex) else { return }
                 browser.tabs[tabIndex] = value
-                project.resources[index].payload = .browserWindow(browser)
+                project.resources[index].payload = kind.payload(browser)
             }
         })
     }
@@ -320,6 +337,7 @@ struct ContentView: View {
     private func icon(for payload: ResourcePayload) -> String {
         switch payload {
         case .browserWindow: "safari"
+        case .chromeWindow: "globe"
         case .terminalSession: "terminal"
         case .finderWindow: "folder"
         case .unsupported: "questionmark.diamond"
@@ -342,6 +360,34 @@ struct ContentView: View {
         panel.directoryURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
         guard panel.runModal() == .OK, let url = panel.url else { return }
         model.selectDirectory(url)
+    }
+}
+
+private enum BrowserKind {
+    case safari
+    case chrome
+
+    var sectionTitle: String {
+        switch self {
+        case .safari: "Safari Tabs"
+        case .chrome: "Chrome Tabs"
+        }
+    }
+
+    func browser(from payload: ResourcePayload) -> BrowserWindow? {
+        switch (self, payload) {
+        case let (.safari, .browserWindow(browser)), let (.chrome, .chromeWindow(browser)):
+            browser
+        default:
+            nil
+        }
+    }
+
+    func payload(_ browser: BrowserWindow) -> ResourcePayload {
+        switch self {
+        case .safari: .browserWindow(browser)
+        case .chrome: .chromeWindow(browser)
+        }
     }
 }
 

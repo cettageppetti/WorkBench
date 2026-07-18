@@ -96,6 +96,36 @@ struct SafariLauncher: BrowserLaunching {
 }
 
 @MainActor
+struct ChromeLauncher: BrowserLaunching {
+    private let executor: any AppleScriptExecuting
+
+    init(executor: any AppleScriptExecuting = FoundationAppleScriptExecutor()) {
+        self.executor = executor
+    }
+
+    func open(_ browser: BrowserWindow) -> String? {
+        guard let firstURL = browser.tabs.first else { return "At least one Chrome tab is required." }
+        let additionalTabs = browser.tabs.dropFirst().map { url in
+            "make new tab at end of tabs with properties {URL:\(appleScriptLiteral(url))}"
+        }.joined(separator: "\n        ")
+        let selectLastTab = browser.tabs.count > 1
+            ? "set active tab index to count of tabs"
+            : ""
+        return executor.execute(source: """
+        tell application "Google Chrome"
+            set createdWindow to make new window
+            tell createdWindow
+                set URL of active tab to \(appleScriptLiteral(firstURL))
+                \(additionalTabs)
+                \(selectLastTab)
+            end tell
+            activate
+        end tell
+        """)
+    }
+}
+
+@MainActor
 struct TerminalLauncher: TerminalLaunching {
     private let executor: any AppleScriptExecuting
     private let fileManager: FileManager
@@ -151,15 +181,18 @@ struct FinderLauncher: FinderLaunching {
 @MainActor
 final class ProjectLauncher {
     private let browserLauncher: any BrowserLaunching
+    private let chromeLauncher: any BrowserLaunching
     private let terminalLauncher: any TerminalLaunching
     private let finderLauncher: any FinderLaunching
 
     init(
         browserLauncher: any BrowserLaunching = SafariLauncher(),
+        chromeLauncher: any BrowserLaunching = ChromeLauncher(),
         terminalLauncher: any TerminalLaunching = TerminalLauncher(),
         finderLauncher: any FinderLaunching = FinderLauncher()
     ) {
         self.browserLauncher = browserLauncher
+        self.chromeLauncher = chromeLauncher
         self.terminalLauncher = terminalLauncher
         self.finderLauncher = finderLauncher
     }
@@ -181,6 +214,8 @@ final class ProjectLauncher {
             switch resource.payload {
             case let .browserWindow(browser):
                 outcome = launchOutcome(for: browserLauncher.open(browser))
+            case let .chromeWindow(browser):
+                outcome = launchOutcome(for: chromeLauncher.open(browser))
             case let .terminalSession(terminal):
                 outcome = launchOutcome(for: terminalLauncher.open(terminal))
             case let .finderWindow(finder):

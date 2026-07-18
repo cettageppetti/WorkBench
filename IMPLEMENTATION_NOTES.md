@@ -24,7 +24,7 @@ The bundle identifier must be replaced with an appropriate reverse-DNS identifie
 - `WorkBench`: native macOS application
 - `WorkBenchTests`: hosted unit-test bundle
 
-Generated Info.plist files are used for both targets. The checked-in entitlements enable App Sandbox, user-selected read/write access, app-scoped bookmarks, Apple Events Automation, and temporary Apple Event exceptions limited to Safari, Terminal, and Finder, as established by the Phase 1 spikes.
+Generated Info.plist files are used for both targets. The checked-in entitlements enable App Sandbox, user-selected read/write access, app-scoped bookmarks, Apple Events Automation, and temporary Apple Event exceptions limited to Safari, Chrome, Terminal, and Finder. Safari, Terminal, and Finder were established by the Phase 1 spikes; Chrome was added as a later Resource type and still requires signed integration verification.
 
 The app includes a custom macOS icon depicting three organized workspace panels
 on a workbench with a subtle launch motif. A standard `AppIcon.appiconset`
@@ -205,9 +205,27 @@ The Terminal adapter initially activated Terminal before sending its `do script`
 
 Repeated Project opening was manually verified by comparing application window counts before and after another launch. Safari, Terminal, and Finder each gained exactly one window, confirming that WorkBench does not reuse the previously opened workspace windows. Permission-denial recovery has not yet been manually verified.
 
+## Chrome Window Resource
+
+The generic Browser Window presentation now reads Safari Window while retaining
+the existing `browser-window` JSON type for backward compatibility. Chrome is a
+separate `chrome-window` Resource using the same ordered-tab payload. Older
+WorkBench versions therefore preserve Chrome Resources as unsupported JSON
+without confusing existing Safari configurations or requiring a schema-version
+migration.
+
+`ChromeLauncher` uses a separately injected `BrowserLaunching` adapter and
+creates a new Google Chrome window, assigns its first tab, appends remaining
+tabs in order, and selects the final tab. The sandbox exception is narrowly
+extended to `com.google.Chrome`. Automated tests cover JSON round trips,
+Chrome-specific validation, default naming, launch ordering and continuation,
+and escaped AppleScript construction. A signed sandboxed launch against the
+real Google Chrome application and permission-denial recovery remain manual
+verification items.
+
 ## Resource removal crash fix
 
-Manual hardening found a crash when a newly added Browser Window was selected and immediately removed. The outgoing SwiftUI property editor reevaluated a binding that captured the Resource's former array index after the Resource had been deleted, causing an out-of-bounds subscript trap.
+Manual hardening found a crash when a newly added Safari Window was selected and immediately removed. The outgoing SwiftUI property editor reevaluated a binding that captured the Resource's former array index after the Resource had been deleted, causing an out-of-bounds subscript trap.
 
 Resource property bindings and tab actions now use the stable `ResourceID` to find the current array position at access time. Missing Resources and stale tab positions safely return or no-op, and selection is cleared before removal mutates the draft. The full automated suite passes, and the original add-select-remove sequence was repeated successfully in a signed build without a crash.
 

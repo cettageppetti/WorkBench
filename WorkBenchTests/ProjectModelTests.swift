@@ -29,11 +29,18 @@ final class ProjectModelTests: XCTestCase {
     }
 
     func testSupportedResourcesRoundTrip() throws {
-        let project = Project.starter()
+        var project = Project.starter()
+        project.resources.append(
+            Resource(
+                name: "Chrome Research",
+                payload: .chromeWindow(BrowserWindow(tabs: ["https://google.com", "file:///tmp/example"]))
+            )
+        )
         let encoded = try encoder.encode(project)
         let decoded = try decoder.decode(Project.self, from: encoded)
 
         XCTAssertEqual(decoded, project)
+        XCTAssertEqual(decoded.resources.last?.type, "chrome-window")
     }
 
     func testUnsupportedResourceRoundTripsWithoutDataLoss() throws {
@@ -151,6 +158,14 @@ final class ProjectModelTests: XCTestCase {
                     payload: .browserWindow(BrowserWindow(tabs: ["not a URL"]))
                 ),
                 Resource(
+                    name: "Chrome",
+                    payload: .chromeWindow(BrowserWindow(tabs: []))
+                ),
+                Resource(
+                    name: "Chrome Web",
+                    payload: .chromeWindow(BrowserWindow(tabs: ["not a URL"]))
+                ),
+                Resource(
                     name: "Terminal",
                     payload: .terminalSession(TerminalSession(workingDirectory: "relative"))
                 )
@@ -163,7 +178,13 @@ final class ProjectModelTests: XCTestCase {
         XCTAssertTrue(issues.contains { $0.field == "resources[0].name" })
         XCTAssertTrue(issues.contains { $0.field == "resources[0].tabs" })
         XCTAssertTrue(issues.contains { $0.field == "resources[1].tabs[0]" })
-        XCTAssertTrue(issues.contains { $0.field == "resources[2].workingDirectory" })
+        XCTAssertTrue(issues.contains {
+            $0.field == "resources[2].tabs" && $0.message == "At least one Chrome tab is required."
+        })
+        XCTAssertTrue(issues.contains {
+            $0.field == "resources[3].tabs[0]" && $0.message == "Enter a URL Chrome can open."
+        })
+        XCTAssertTrue(issues.contains { $0.field == "resources[4].workingDirectory" })
     }
 
     private var encoder: JSONEncoder {

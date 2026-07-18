@@ -47,6 +47,7 @@ enum UITestModelFactory {
 
         let launcher = ProjectLauncher(
             browserLauncher: UITestBrowserLauncher(),
+            chromeLauncher: UITestBrowserLauncher(),
             terminalLauncher: UITestTerminalLauncher(),
             finderLauncher: UITestFinderLauncher()
         )

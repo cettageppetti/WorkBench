@@ -92,6 +92,7 @@ struct FinderWindow: Codable, Equatable {
 
 enum ResourcePayload: Equatable {
     case browserWindow(BrowserWindow)
+    case chromeWindow(BrowserWindow)
     case terminalSession(TerminalSession)
     case finderWindow(FinderWindow)
     case unsupported(type: String, rawObject: [String: JSONValue])
@@ -106,6 +107,8 @@ struct Resource: Codable, Equatable {
         switch payload {
         case .browserWindow:
             "browser-window"
+        case .chromeWindow:
+            "chrome-window"
         case .terminalSession:
             "terminal-session"
         case .finderWindow:
@@ -151,6 +154,10 @@ struct Resource: Codable, Equatable {
             payload = .browserWindow(
                 BrowserWindow(tabs: try common.decode([String].self, forKey: .tabs))
             )
+        case "chrome-window":
+            payload = .chromeWindow(
+                BrowserWindow(tabs: try common.decode([String].self, forKey: .tabs))
+            )
         case "terminal-session":
             payload = .terminalSession(
                 TerminalSession(
@@ -179,6 +186,8 @@ struct Resource: Codable, Equatable {
 
         switch payload {
         case let .browserWindow(browser):
+            try container.encode(browser.tabs, forKey: .tabs)
+        case let .chromeWindow(browser):
             try container.encode(browser.tabs, forKey: .tabs)
         case let .terminalSession(terminal):
             try container.encode(terminal.workingDirectory, forKey: .workingDirectory)
