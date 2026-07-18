@@ -65,6 +65,41 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testReloadCanCancelDiscardAndSaveUnsavedChanges() {
+        continueAfterFailure = false
+        let app = launchApp()
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        renameSelectedProject(to: "Cancelled Reload", in: app)
+        reloadConfigurations(in: app)
+        chooseUnsavedChanges("Cancel", in: app)
+        XCTAssertTrue(app.windows["Cancelled Reload"].waitForExistence(timeout: 2))
+
+        reloadConfigurations(in: app)
+        chooseUnsavedChanges("Discard Changes", in: app)
+        XCTAssertTrue(app.windows["Starter Project"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].exists)
+        app.terminate()
+
+        let saveApp = launchApp()
+        guard saveApp.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible after relaunch. Accessibility hierarchy:\n\(saveApp.debugDescription)")
+            return
+        }
+        renameSelectedProject(to: "Saved Reload", in: saveApp)
+        reloadConfigurations(in: saveApp)
+        chooseUnsavedChanges("Save", in: saveApp)
+        XCTAssertTrue(saveApp.windows["Saved Reload"].waitForExistence(timeout: 2))
+        let projectsList = saveApp.outlines["projects-list"]
+        XCTAssertTrue(projectsList.staticTexts["Saved Reload"].exists)
+        XCTAssertFalse(projectsList.staticTexts["Starter Project"].exists)
+        XCTAssertFalse(saveApp.staticTexts["unsaved-changes-indicator"].exists)
+    }
+
+    @MainActor
     func testTerminalResourceCanBeSelectedEditedAndSaved() {
         continueAfterFailure = false
         let app = launchApp()
@@ -274,5 +309,10 @@ final class WorkBenchUITests: XCTestCase {
         XCTAssertTrue(button.exists)
         button.click()
         XCTAssertFalse(sheet.waitForExistence(timeout: 1))
+    }
+
+    @MainActor
+    private func reloadConfigurations(in app: XCUIApplication) {
+        app.typeKey("r", modifierFlags: [.command, .shift])
     }
 }
