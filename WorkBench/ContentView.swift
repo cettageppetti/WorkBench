@@ -370,7 +370,9 @@ private struct LaunchReportView: View {
             .frame(minHeight: 180)
             HStack {
                 Spacer()
-                Button("Done", action: dismiss).keyboardShortcut(.defaultAction)
+                Button("Done", action: dismiss)
+                    .accessibilityIdentifier("dismiss-launch-report-button")
+                    .keyboardShortcut(.defaultAction)
             }
         }
         .padding(20)

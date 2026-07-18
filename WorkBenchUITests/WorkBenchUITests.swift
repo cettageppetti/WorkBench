@@ -192,6 +192,38 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testInvalidProjectPresentsLaunchReport() {
+        continueAfterFailure = false
+        let app = launchApp()
+        let terminalResource = app.staticTexts["Home Terminal"]
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5),
+              terminalResource.waitForExistence(timeout: 2) else {
+            XCTFail("Starter Project resources were not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        terminalResource.click()
+        replaceText(
+            in: app.textFields["terminal-working-directory-field"],
+            with: "Projects"
+        )
+
+        let openButton = app.buttons["open-project-button"]
+        XCTAssertTrue(openButton.isEnabled)
+        openButton.click()
+
+        let report = app.sheets.firstMatch
+        XCTAssertTrue(report.waitForExistence(timeout: 2))
+        XCTAssertTrue(report.staticTexts["Couldn’t Fully Open Starter Project"].exists)
+        XCTAssertTrue(report.staticTexts[
+            "resources[1].workingDirectory: Use an absolute path or a home-relative path beginning with ~/."
+        ].exists)
+
+        report.buttons["dismiss-launch-report-button"].click()
+        XCTAssertFalse(report.waitForExistence(timeout: 1))
+    }
+
+    @MainActor
     private func renameSelectedProject(to name: String, in app: XCUIApplication) {
         let nameField = app.textFields["project-name-field"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 2))
