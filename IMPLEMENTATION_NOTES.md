@@ -214,7 +214,7 @@ The 48-test `WorkBenchTests` target also passes independently. Its login-home
 test now derives the expected home from the POSIX password database because
 Foundation's named-user lookup returns the app-container home under the current
 macOS test sandbox. The complete signed scheme passes all 48 unit tests and all
-nine UI tests together. Xcode intermittently reports that it cannot collect an OS log
+ten UI tests together. Xcode intermittently reports that it cannot collect an OS log
 archive because `version.plist` cannot be read; this post-test infrastructure
 warning does not affect test execution or results. Terminal's App Management
 permission may be revoked after command-line UI testing is complete.
@@ -256,3 +256,7 @@ identifies its preserved type, and does not prevent its Project from being opene
 A ninth end-to-end test invokes Reload Configurations through its Command-Shift-R
 shortcut with dirty edits. It verifies that Cancel preserves the draft, Discard
 restores the repository value, and Save persists the edit before reload continues.
+
+A tenth end-to-end test closes the window with dirty edits and exercises the
+native lifecycle alert. It verifies that Cancel keeps the window open while
+Discard Changes and Save complete the requested close.

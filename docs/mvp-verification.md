@@ -26,7 +26,7 @@ The hosted `WorkBenchTests` target covers:
 - application-model coordination for creation, Resource commands, unsaved
   selection changes, and consolidated invalid-launch reports.
 
-The signed `xcodebuild test` command passes all 48 unit tests and all nine macOS
+The signed `xcodebuild test` command passes all 48 unit tests and all ten macOS
 UI tests. The build emits the expected metadata-extraction warning because WorkBench
 does not link App Intents. Xcode may also fail to collect a post-test OS log
 archive because `version.plist` is unreadable; test execution still succeeds.
@@ -52,6 +52,8 @@ unsupported-Resource test verifies that malformed files remain visible and that
 future Resource types remain selectable with their preservation guidance.
 A Reload command test verifies that unsaved edits can be cancelled, discarded,
 or saved before repository reload continues.
+A window-close test verifies that the native unsaved-changes alert can cancel
+the close or complete it after discarding or saving the draft.
 
 ## Manually verified
 
@@ -72,8 +74,8 @@ repeated during final acceptance verification.
 Automated interaction coverage is still needed for:
 
 - first launch and folder selection presentation;
-- Save/Discard/Cancel from window-close and quit triggers (Project selection
-  and Reload are covered).
+- Save/Discard/Cancel from the quit trigger (Project selection, Reload, and
+  window close are covered).
 
 Adding controlled launch behavior for UI tests must not become a production
 back door or weaken the sandbox and Automation boundaries.

@@ -100,6 +100,36 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testWindowCloseCanCancelDiscardAndSaveUnsavedChanges() {
+        continueAfterFailure = false
+        let app = launchApp()
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        renameSelectedProject(to: "Cancelled Close", in: app)
+        closeWindow(in: app)
+        chooseLifecycleUnsavedChanges("Cancel", in: app)
+        XCTAssertTrue(app.windows["Cancelled Close"].exists)
+
+        closeWindow(in: app)
+        chooseLifecycleUnsavedChanges("Discard Changes", in: app)
+        XCTAssertFalse(app.windows["Cancelled Close"].waitForExistence(timeout: 1))
+        app.terminate()
+
+        let saveApp = launchApp()
+        guard saveApp.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible after relaunch. Accessibility hierarchy:\n\(saveApp.debugDescription)")
+            return
+        }
+        renameSelectedProject(to: "Saved Close", in: saveApp)
+        closeWindow(in: saveApp)
+        chooseLifecycleUnsavedChanges("Save", in: saveApp)
+        XCTAssertFalse(saveApp.windows["Saved Close"].waitForExistence(timeout: 1))
+    }
+
+    @MainActor
     func testTerminalResourceCanBeSelectedEditedAndSaved() {
         continueAfterFailure = false
         let app = launchApp()
@@ -314,5 +344,23 @@ final class WorkBenchUITests: XCTestCase {
     @MainActor
     private func reloadConfigurations(in app: XCUIApplication) {
         app.typeKey("r", modifierFlags: [.command, .shift])
+    }
+
+    @MainActor
+    private func closeWindow(in app: XCUIApplication) {
+        let closeButton = app.buttons["_XCUI:CloseWindow"]
+        XCTAssertTrue(closeButton.waitForExistence(timeout: 2))
+        closeButton.click()
+    }
+
+    @MainActor
+    private func chooseLifecycleUnsavedChanges(_ choice: String, in app: XCUIApplication) {
+        let dialog = app.dialogs.firstMatch
+        XCTAssertTrue(dialog.waitForExistence(timeout: 2))
+        XCTAssertTrue(dialog.staticTexts["Your changes will be lost if you don’t save them."].exists)
+        let button = dialog.buttons[choice]
+        XCTAssertTrue(button.exists)
+        button.click()
+        XCTAssertFalse(dialog.waitForExistence(timeout: 1))
     }
 }
