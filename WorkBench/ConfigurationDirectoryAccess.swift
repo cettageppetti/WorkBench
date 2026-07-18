@@ -110,11 +110,13 @@ final class ConfigurationDirectoryAccess {
     init(
         bookmarkStore: any BookmarkDataStoring = UserDefaultsBookmarkDataStore(),
         bookmarker: any SecurityScopedBookmarking = FoundationSecurityScopedBookmarker(),
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        initialStatus: Status = .unresolved
     ) {
         self.bookmarkStore = bookmarkStore
         self.bookmarker = bookmarker
         self.fileManager = fileManager
+        status = initialStatus
     }
 
     func withConfigurationDirectoryAccess<Result>(

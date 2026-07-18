@@ -168,3 +168,53 @@ Repeated Project opening was manually verified by comparing application window c
 Manual hardening found a crash when a newly added Browser Window was selected and immediately removed. The outgoing SwiftUI property editor reevaluated a binding that captured the Resource's former array index after the Resource had been deleted, causing an out-of-bounds subscript trap.
 
 Resource property bindings and tab actions now use the stable `ResourceID` to find the current array position at access time. Missing Resources and stale tab positions safely return or no-op, and selection is cleared before removal mutates the draft. The full automated suite passes, and the original add-select-remove sequence was repeated successfully in a signed build without a crash.
+
+## UI test implementation
+
+The first macOS UI-test slice is implemented and verified:
+
+- a `WorkBenchUITests` macOS UI-test target in the existing `WorkBench` scheme;
+- stable accessibility identifiers for the Project and Resource lists, Project
+  name field, unsaved-changes indicator, Open Project button, and Save button;
+- Debug-only UI-test startup selected by explicit launch argument, launch
+  environment, and AppKit launch-default signals;
+- an in-memory Project repository seeded with Starter Project; and
+- no-op Safari, Terminal, and Finder launch adapters so UI tests cannot open
+  external applications.
+
+The UI-test model starts with synthetic ready directory access and is displayed
+in a retained AppKit-hosted window. This avoids SwiftUI's restorable single
+window reopening with no visible window under command-line XCTest. Both paths
+are compiled only in Debug builds and still require the explicit UI-test signal.
+
+`testStarterProjectCanBeRenamedAndSaved()` verifies that Starter Project is
+visible, editing its name enters dirty state, Save is enabled, saving clears the
+unsaved indicator, and the renamed Project appears in the list.
+
+The first test command incorrectly retained the old unit-test setting
+`CODE_SIGNING_ALLOWED=NO`. macOS reported the temporary app as damaged because a
+UI test must launch its app and runner. No repository or installed application
+was damaged. Do not use `CODE_SIGNING_ALLOWED=NO` for runs that include
+`WorkBenchUITests`.
+
+A fresh, normally ad-hoc-signed build under
+`/tmp/WorkBenchSignedDerivedData` launches without the damaged-app alert. The
+isolated UI target passes with:
+
+```bash
+xcodebuild test \
+  -project WorkBench.xcodeproj \
+  -scheme WorkBench \
+  -destination 'platform=macOS' \
+  -derivedDataPath /tmp/WorkBenchSignedDerivedData \
+  -only-testing:WorkBenchUITests
+```
+
+The 48-test `WorkBenchTests` target also passes independently. Its login-home
+test now derives the expected home from the POSIX password database because
+Foundation's named-user lookup returns the app-container home under the current
+macOS test sandbox. The complete signed scheme passes all 48 unit tests and the
+UI test together. Xcode intermittently reports that it cannot collect an OS log
+archive because `version.plist` cannot be read; this post-test infrastructure
+warning does not affect test execution or results. Terminal's App Management
+permission may be revoked after command-line UI testing is complete.

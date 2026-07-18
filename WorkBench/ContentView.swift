@@ -101,6 +101,7 @@ struct ContentView: View {
                     }
                 }
             }
+            .accessibilityIdentifier("projects-list")
             .navigationTitle("Projects")
             .toolbar {
                 ToolbarItemGroup {
@@ -124,6 +125,7 @@ struct ContentView: View {
                 }
                 .onMove(perform: model.moveResources)
             }
+            .accessibilityIdentifier("resources-list")
             .navigationTitle(workflow.draft?.name ?? "Resources")
             .safeAreaInset(edge: .bottom) {
                 HStack {
@@ -154,8 +156,10 @@ struct ContentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("Open Project", systemImage: "play.fill", action: model.openSelectedProject)
+                    .accessibilityIdentifier("open-project-button")
                     .disabled(workflow.draft == nil)
                 Button("Save", systemImage: "square.and.arrow.down", action: model.save)
+                    .accessibilityIdentifier("save-project-button")
                     .disabled(!workflow.isDirty)
             }
         }
@@ -175,8 +179,10 @@ struct ContentView: View {
         } else if workflow.draft != nil {
             Form {
                 TextField("Project Name", text: projectNameBinding(workflow))
+                    .accessibilityIdentifier("project-name-field")
                 if workflow.isDirty {
                     Label("Unsaved Changes", systemImage: "circle.fill")
+                        .accessibilityIdentifier("unsaved-changes-indicator")
                         .foregroundStyle(.orange)
                 }
                 validationMessages(for: workflow.draft)

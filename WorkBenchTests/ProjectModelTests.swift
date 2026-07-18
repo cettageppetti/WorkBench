@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import XCTest
 @testable import WorkBench
 
@@ -97,8 +98,9 @@ final class ProjectModelTests: XCTestCase {
     }
 
     func testDefaultHomeExpansionUsesLoginAccountHome() throws {
+        let passwordEntry = try XCTUnwrap(getpwuid(getuid()))
         let expected = URL(
-            filePath: NSHomeDirectoryForUser(NSUserName()) ?? NSHomeDirectory(),
+            filePath: String(cString: passwordEntry.pointee.pw_dir),
             directoryHint: .isDirectory
         )
 

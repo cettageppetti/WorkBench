@@ -197,7 +197,7 @@ Implementation status: the production coordinator, parameterized adapters, struc
 
 ## Phase 7: MVP hardening and documentation
 
-Implementation status: schema version 1 and hand-editing guidance are documented. Permission recovery, verified run instructions, requirement-by-requirement review, and final hardening checks remain.
+Implementation status: schema version 1 and hand-editing guidance are documented, the requirement-by-requirement verification baseline is recorded in `mvp-verification.md`, and the first automated UI rename/save flow passes. Permission recovery, expanded UI coverage, verified run instructions, and final hardening checks remain.
 
 ### Outcomes
 
