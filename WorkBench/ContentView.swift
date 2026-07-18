@@ -172,6 +172,7 @@ struct ContentView: View {
            let resource = workflow.draft?.resources[index] {
             Form {
                 TextField("Name", text: resourceNameBinding(resourceID: resourceID, workflow: workflow))
+                    .accessibilityIdentifier("resource-name-field")
                 resourceFields(resource: resource, workflow: workflow)
                 validationMessages(for: workflow.draft)
             }
@@ -241,6 +242,7 @@ struct ContentView: View {
                 terminal.workingDirectory, resourceID: resource.id,
                 makePayload: { .terminalSession(TerminalSession(workingDirectory: $0)) }
             ))
+            .accessibilityIdentifier("terminal-working-directory-field")
         case let .finderWindow(finder):
             TextField("Folder", text: payloadStringBinding(
                 finder.folder, resourceID: resource.id,

@@ -65,13 +65,49 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testTerminalResourceCanBeSelectedEditedAndSaved() {
+        continueAfterFailure = false
+        let app = launchApp()
+        let terminalResource = app.staticTexts["Home Terminal"]
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5),
+              terminalResource.waitForExistence(timeout: 2) else {
+            XCTFail("Starter Project resources were not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        terminalResource.click()
+        replaceText(in: app.textFields["resource-name-field"], with: "Development Terminal")
+        replaceText(
+            in: app.textFields["terminal-working-directory-field"],
+            with: "~/Projects"
+        )
+
+        let saveButton = app.buttons["save-project-button"]
+        XCTAssertTrue(saveButton.isEnabled)
+        saveButton.click()
+
+        XCTAssertFalse(saveButton.isEnabled)
+        XCTAssertTrue(app.staticTexts["Development Terminal"].exists)
+        XCTAssertEqual(
+            app.textFields["terminal-working-directory-field"].value as? String,
+            "~/Projects"
+        )
+    }
+
+    @MainActor
     private func renameSelectedProject(to name: String, in app: XCUIApplication) {
         let nameField = app.textFields["project-name-field"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 2))
-        nameField.click()
-        nameField.typeKey("a", modifierFlags: .command)
-        nameField.typeText(name)
+        replaceText(in: nameField, with: name)
         XCTAssertTrue(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 2))
+    }
+
+    @MainActor
+    private func replaceText(in field: XCUIElement, with value: String) {
+        XCTAssertTrue(field.waitForExistence(timeout: 2))
+        field.click()
+        field.typeKey("a", modifierFlags: .command)
+        field.typeText(value)
     }
 
     @MainActor

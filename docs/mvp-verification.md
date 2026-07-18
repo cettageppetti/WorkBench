@@ -26,8 +26,8 @@ The hosted `WorkBenchTests` target covers:
 - application-model coordination for creation, Resource commands, unsaved
   selection changes, and consolidated invalid-launch reports.
 
-The signed `xcodebuild test` command passes all 48 unit tests and both macOS UI
-tests. The build emits the expected metadata-extraction warning because WorkBench
+The signed `xcodebuild test` command passes all 48 unit tests and all three macOS
+UI tests. The build emits the expected metadata-extraction warning because WorkBench
 does not link App Intents. Xcode may also fail to collect a post-test OS log
 archive because `version.plist` is unreadable; test execution still succeeds.
 
@@ -38,7 +38,9 @@ Starter Project, renaming it, observing dirty state, explicitly saving, and
 observing the saved name and cleared dirty state. A two-Project fixture also
 verifies that switching Projects with unsaved edits supports Cancel, Discard
 Changes, and Save, including preserving edits after Cancel, restoring the saved
-value after Discard, and persisting a rename before completing the switch.
+value after Discard, and persisting a rename before completing the switch. A
+Resource editing test selects Home Terminal, changes its name and working
+directory, saves, and verifies the persisted values in the visible interface.
 
 ## Manually verified
 
@@ -59,8 +61,7 @@ repeated during final acceptance verification.
 Automated interaction coverage is still needed for:
 
 - first launch and folder selection presentation;
-- additional Project and Resource selection, Resource editing, and drag
-  reordering;
+- additional Project operations and Resource drag reordering;
 - Save/Discard/Cancel from reload, window-close, and quit triggers (Project
   selection is covered);
 - deletion confirmation;
