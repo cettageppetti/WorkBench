@@ -67,6 +67,9 @@ recovery guidance, enabled chooser action, and hidden Projects editor.
   is missing, restores a selected temporary folder after relaunch, returns to
   folder selection with write-failure guidance when access is denied, and shows
   expired-access guidance when macOS marks the bookmark stale.
+- An isolated signed build loads a valid hand edit, keeps malformed JSON visible
+  as a file-specific issue, identifies an unsupported Resource, and preserves
+  that Resource's extra boolean and nested JSON fields across GUI save/reload.
 - Starter Project opens new Safari, Terminal, and Finder windows in order.
 - Reopening Starter Project creates one additional window in each application.
 - Adding, selecting, and immediately removing a Browser Window no longer
@@ -91,8 +94,6 @@ back door or weaken the sandbox and Automation boundaries.
   recovery guidance names the affected application.
 - Run the complete acceptance scenario from a clean configuration and clean
   privacy-permission state.
-- Verify valid hand edits, invalid JSON, unsupported Resources, and save/reload
-  preservation through the visible interface.
 - Review keyboard navigation, focus, accessibility labels, practical minimum
   window size, and larger layouts.
 - Measure UI responsiveness during repository operations and a complete

@@ -119,6 +119,15 @@ Repository behavior includes:
 
 Repository calls are currently synchronous and main-actor isolated, matching the small local JSON files expected for the MVP. Responsiveness must be reviewed when the repository is connected to the interface; file work should move off the main actor if measurements show noticeable blocking.
 
+Manual hardening used an isolated signed build and temporary configuration to
+verify external JSON editing through the visible interface. A valid hand edit
+renamed Starter Project and added an unsupported Future Resource; a separate
+malformed `broken.json` remained visible as a configuration issue. WorkBench
+displayed the future type and preservation guidance. After renaming the Project
+in the GUI, saving, and reloading, exact JSON inspection confirmed that the
+unsupported Resource retained its UUID, name, type, boolean field, nested number,
+and nested string array. The isolated configuration and DerivedData were removed.
+
 ## Phase 4 draft-editing workflows
 
 `ProjectWorkflow` is the main-actor application-state boundary between the future SwiftUI interface and `ProjectRepository`. It keeps the persisted Project and active draft as separate values and derives dirty state through value comparison.
