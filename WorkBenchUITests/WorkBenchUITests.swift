@@ -95,6 +95,30 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testResourcesCanBeReorderedAndSaved() {
+        continueAfterFailure = false
+        let app = launchApp()
+        let browserResource = app.staticTexts["Web"]
+        let finderResource = app.staticTexts["Home Folder"]
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5),
+              browserResource.waitForExistence(timeout: 2),
+              finderResource.waitForExistence(timeout: 2) else {
+            XCTFail("Starter Project resources were not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        finderResource.click(forDuration: 0.5, thenDragTo: browserResource)
+        XCTAssertGreaterThan(finderResource.frame.minY, browserResource.frame.minY)
+
+        let saveButton = app.buttons["save-project-button"]
+        XCTAssertTrue(saveButton.isEnabled)
+        saveButton.click()
+
+        XCTAssertFalse(saveButton.isEnabled)
+        XCTAssertGreaterThan(finderResource.frame.minY, browserResource.frame.minY)
+    }
+
+    @MainActor
     private func renameSelectedProject(to name: String, in app: XCUIApplication) {
         let nameField = app.textFields["project-name-field"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 2))
