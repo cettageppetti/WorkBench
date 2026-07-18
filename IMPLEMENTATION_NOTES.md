@@ -33,16 +33,20 @@ them into `AppIcon.icns` and `Assets.car` with `CFBundleIconName` set to `AppIco
 
 ## Verification
 
-The baseline application and test suite pass with:
+The complete application and test suite pass with normal ad-hoc signing:
 
 ```bash
 xcodebuild test \
   -project WorkBench.xcodeproj \
   -scheme WorkBench \
   -destination 'platform=macOS' \
-  -derivedDataPath /tmp/WorkBenchDerivedData \
-  CODE_SIGNING_ALLOWED=NO
+  -derivedDataPath /tmp/WorkBenchSignedDerivedData
 ```
+
+An unsigned run must be limited explicitly to `WorkBenchTests` with
+`-only-testing:WorkBenchTests`. An unsigned command must never include
+`WorkBenchUITests`, because macOS rejects the unsigned UI-test runner as
+damaged.
 
 The initial sandboxed command-line run could not start Xcode's Swift macro service for the SwiftUI preview. Running Xcode with normal system access resolved that environment restriction. The build also reports that App Intents metadata extraction is skipped because WorkBench does not link App Intents; this is expected for the baseline.
 

@@ -46,16 +46,30 @@ The verified initial development environment is Xcode 26.6, macOS SDK 26.5, and 
 
 No third-party dependencies are planned for the MVP.
 
-Build and run the tests from the repository root:
+Build and run the complete signed test suite from the repository root:
 
 ```bash
 xcodebuild test \
   -project WorkBench.xcodeproj \
   -scheme WorkBench \
   -destination 'platform=macOS' \
-  -derivedDataPath /tmp/WorkBenchDerivedData \
+  -derivedDataPath /tmp/WorkBenchSignedDerivedData
+```
+
+For a faster unsigned unit-test-only run, explicitly exclude the UI-test target:
+
+```bash
+xcodebuild test \
+  -project WorkBench.xcodeproj \
+  -scheme WorkBench \
+  -destination 'platform=macOS' \
+  -derivedDataPath /tmp/WorkBenchUnitDerivedData \
+  -only-testing:WorkBenchTests \
   CODE_SIGNING_ALLOWED=NO
 ```
+
+Never use `CODE_SIGNING_ALLOWED=NO` for a run that includes
+`WorkBenchUITests`; macOS rejects an unsigned UI-test runner as damaged.
 
 ## Scope
 
