@@ -130,6 +130,37 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testQuitCanCancelDiscardAndSaveUnsavedChanges() {
+        continueAfterFailure = false
+        let app = launchApp()
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        renameSelectedProject(to: "Cancelled Quit", in: app)
+        quitApplication(app)
+        chooseLifecycleUnsavedChanges("Cancel", in: app)
+        app.activate()
+        XCTAssertEqual(app.state, .runningForeground)
+        XCTAssertTrue(app.windows["Cancelled Quit"].exists)
+
+        quitApplication(app)
+        chooseLifecycleUnsavedChanges("Discard Changes", in: app)
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 2))
+
+        let saveApp = launchApp()
+        guard saveApp.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible after relaunch. Accessibility hierarchy:\n\(saveApp.debugDescription)")
+            return
+        }
+        renameSelectedProject(to: "Saved Quit", in: saveApp)
+        quitApplication(saveApp)
+        chooseLifecycleUnsavedChanges("Save", in: saveApp)
+        XCTAssertTrue(saveApp.wait(for: .notRunning, timeout: 2))
+    }
+
+    @MainActor
     func testTerminalResourceCanBeSelectedEditedAndSaved() {
         continueAfterFailure = false
         let app = launchApp()
@@ -351,6 +382,16 @@ final class WorkBenchUITests: XCTestCase {
         let closeButton = app.buttons["_XCUI:CloseWindow"]
         XCTAssertTrue(closeButton.waitForExistence(timeout: 2))
         closeButton.click()
+    }
+
+    @MainActor
+    private func quitApplication(_ app: XCUIApplication) {
+        let applicationMenu = app.menuBars.menuBarItems["WorkBench"]
+        XCTAssertTrue(applicationMenu.waitForExistence(timeout: 2))
+        applicationMenu.click()
+        let quitItem = applicationMenu.menus.menuItems["Quit WorkBench"]
+        XCTAssertTrue(quitItem.waitForExistence(timeout: 2))
+        quitItem.click()
     }
 
     @MainActor
