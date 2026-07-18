@@ -154,6 +154,44 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testProjectsCanBeCreatedAndDuplicated() {
+        continueAfterFailure = false
+        let app = launchApp()
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+        let projectsList = app.outlines["projects-list"]
+        XCTAssertTrue(projectsList.exists)
+
+        let newProjectButton = app.buttons["new-project-button"]
+        XCTAssertTrue(newProjectButton.waitForExistence(timeout: 2))
+        newProjectButton.click()
+
+        let nameField = app.textFields["project-name-field"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 2))
+        XCTAssertEqual(nameField.value as? String, "Untitled Project")
+        XCTAssertFalse(projectsList.staticTexts["Untitled Project"].exists)
+
+        let saveButton = app.buttons["save-project-button"]
+        XCTAssertTrue(saveButton.isEnabled)
+        saveButton.click()
+        XCTAssertTrue(projectsList.staticTexts["Untitled Project"].exists)
+
+        let duplicateProjectButton = app.buttons["duplicate-project-button"]
+        XCTAssertTrue(duplicateProjectButton.isEnabled)
+        duplicateProjectButton.click()
+        XCTAssertEqual(nameField.value as? String, "Untitled Project Copy")
+        XCTAssertFalse(projectsList.staticTexts["Untitled Project Copy"].exists)
+
+        XCTAssertTrue(saveButton.isEnabled)
+        saveButton.click()
+        XCTAssertFalse(saveButton.isEnabled)
+        XCTAssertTrue(projectsList.staticTexts["Untitled Project"].exists)
+        XCTAssertTrue(projectsList.staticTexts["Untitled Project Copy"].exists)
+    }
+
+    @MainActor
     private func renameSelectedProject(to name: String, in app: XCUIApplication) {
         let nameField = app.textFields["project-name-field"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 2))

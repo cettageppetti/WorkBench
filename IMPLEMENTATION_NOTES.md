@@ -214,7 +214,7 @@ The 48-test `WorkBenchTests` target also passes independently. Its login-home
 test now derives the expected home from the POSIX password database because
 Foundation's named-user lookup returns the app-container home under the current
 macOS test sandbox. The complete signed scheme passes all 48 unit tests and all
-five UI tests together. Xcode intermittently reports that it cannot collect an OS log
+six UI tests together. Xcode intermittently reports that it cannot collect an OS log
 archive because `version.plist` cannot be read; this post-test infrastructure
 warning does not affect test execution or results. Terminal's App Management
 permission may be revoked after command-line UI testing is complete.
@@ -238,3 +238,8 @@ A fifth end-to-end test selects Second Project and exercises both outcomes of
 the deletion confirmation. Cancel keeps the Project visible; reopening the
 confirmation and choosing Delete removes only Second Project while Starter
 Project remains available.
+
+A sixth end-to-end test creates Untitled Project and duplicates it as Untitled
+Project Copy. Each remains absent from the Projects sidebar while it is an
+unsaved draft, then appears after Save, confirming the visible draft-first
+creation and duplication workflow and deterministic unique naming.

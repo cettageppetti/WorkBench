@@ -106,9 +106,11 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItemGroup {
                     Button(action: model.createProject) { Label("New Project", systemImage: "plus") }
+                        .accessibilityIdentifier("new-project-button")
                     Button(action: model.duplicateSelectedProject) {
                         Label("Duplicate Project", systemImage: "plus.square.on.square")
                     }
+                    .accessibilityIdentifier("duplicate-project-button")
                     .disabled(workflow.draft == nil)
                     Button(action: model.confirmDeleteSelectedProject) {
                         Label("Delete Project", systemImage: "trash")
