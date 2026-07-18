@@ -191,6 +191,7 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
             if case let .completed(continuation) = result { return continuation }
 
             let alert = NSAlert()
+            alert.icon = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
             alert.messageText = "Do you want to save the changes to \"\(workflow.draft?.name ?? "Project")\"?"
             alert.informativeText = "Your changes will be lost if you don’t save them."
             alert.addButton(withTitle: "Save")

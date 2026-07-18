@@ -168,6 +168,10 @@ keeps the Project title beside the sidebar in the production `Window` scene;
 at minimum width, Open Project and Save move into the native overflow menu
 without overlap.
 
+The AppKit save-before-closing alert explicitly loads the running bundle's icon
+through `NSWorkspace`. This keeps lifecycle prompts branded with the WorkBench
+icon in both the production Window scene and the custom automated-test host.
+
 Xcode 26.6's Swift compiler crashed during IR generation for a direct method-reference conversion used as a `Binding<ProjectID?>` setter. An equivalent explicit closure avoids the compiler defect. The initial restricted command-line build also could not run the Swift Observation macro service; normal Xcode build access is required, as already observed for SwiftUI macros in the baseline.
 
 ## Phase 6 Resource launch coordination
