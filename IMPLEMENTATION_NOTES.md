@@ -58,6 +58,16 @@ This product-flow change from automatic, silent directory creation was approved 
 
 The signed debug app was verified with App Sandbox, user-selected read/write access, and app-scoped bookmark entitlements. After the user selected `~/Documents/WorkBench`, WorkBench persisted the bookmark and restored access in a separately launched app instance. Both selection and restoration perform a reversible atomic write/read/delete probe, balance security-scoped resource access, and leave no probe file behind.
 
+Hardening verification used an isolated ad-hoc signed build with bundle identifier
+`com.example.WorkBench.DirectoryAccessTest` and a temporary `/tmp` configuration
+folder, leaving the real configuration and bookmark untouched. With no stored
+bookmark, WorkBench presented folder selection and accepted the temporary folder;
+a separate launch restored it without prompting. Removing directory permissions
+returned WorkBench to folder selection with the write-probe failure, and replacing
+the bookmarked folder caused macOS to mark the bookmark stale and WorkBench to show
+"Access to the WorkBench folder has expired. Select it again." The temporary folder
+and DerivedData were removed after verification.
+
 ## Phase 1 Automation spike
 
 The first signed Automation run used the hardened-runtime Apple Events entitlement and the required usage description. Safari, Terminal, and Finder each returned `Application isn't running`, including Finder, which was already running. Inspection of their scripting definitions found no public scripting access groups that cover WorkBench's required operations.

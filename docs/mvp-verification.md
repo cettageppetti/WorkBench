@@ -63,6 +63,10 @@ recovery guidance, enabled chooser action, and hidden Projects editor.
 
 - A signed sandboxed build restores access to a selected
   `~/Documents/WorkBench` directory through an app-scoped bookmark.
+- An isolated signed sandboxed build presents folder selection when its bookmark
+  is missing, restores a selected temporary folder after relaunch, returns to
+  folder selection with write-failure guidance when access is denied, and shows
+  expired-access guidance when macOS marks the bookmark stale.
 - Starter Project opens new Safari, Terminal, and Finder windows in order.
 - Reopening Starter Project creates one additional window in each application.
 - Adding, selecting, and immediately removing a Browser Window no longer
@@ -85,8 +89,6 @@ back door or weaken the sandbox and Automation boundaries.
 - Exercise Automation permission denial and revocation independently for
   Safari, Terminal, and Finder; verify later Resources are still attempted and
   recovery guidance names the affected application.
-- Exercise missing, stale, and denied configuration-directory access in the
-  signed application.
 - Run the complete acceptance scenario from a clean configuration and clean
   privacy-permission state.
 - Verify valid hand edits, invalid JSON, unsupported Resources, and save/reload
