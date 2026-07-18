@@ -29,8 +29,23 @@ Machine-specific `aeroSpaceIntegrationEnabled` state belongs in a typed
 `UserDefaults` Settings store and defaults to false. Project JSON never contains
 an executable path or socket detail. The production model, migration,
 validation, Settings store, and persistence tests implement this contract. The
-typed AeroSpace adapter, Settings UI, and Project destination editor remain
-separate follow-up increments.
+Settings UI and Project destination editor remain separate follow-up increments.
+
+## Typed AeroSpace client
+
+`AeroSpaceClient` implements only two fixed operations: list all workspaces and
+activate one named workspace. It discovers the CLI at the standard Apple Silicon
+and Intel Homebrew locations, invokes it directly with argument arrays, and
+never exposes a generic command or shell boundary. Each command has a five-second
+timeout and returns a typed error for a missing executable, process-launch
+failure, timeout, nonzero exit, malformed JSON, or failed focus confirmation.
+
+Activation sends the workspace name as one argument after `--`, then queries the
+focused workspace and requires an exact match before reporting success. The
+client remains separate from `ProjectLauncher`; the launch-preflight recovery
+coordinator is the next increment. A read-only check against the locally
+installed AeroSpace `0.21.2-Beta` confirmed the expected JSON object shape. The
+complete signed scheme passes all 63 unit tests and all 13 UI tests.
 
 ## AeroSpace sandbox communication spike
 

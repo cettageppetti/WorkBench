@@ -25,12 +25,14 @@ The hosted `WorkBenchTests` target covers:
   recovery decisions;
 - machine-local AeroSpace integration enablement, including its disabled
   default and persistence independently of Project JSON;
+- typed AeroSpace workspace discovery and activation arguments, command
+  failures, timeouts, JSON parsing, and post-activation focus confirmation;
 - launch validation, sequential ordering, continuation after failure, missing
   paths, unsupported Resources, and parameterized AppleScript construction; and
 - application-model coordination for creation, Resource commands, unsaved
   selection changes, and consolidated invalid-launch reports.
 
-The signed `xcodebuild test` command passes all 55 unit tests and all thirteen
+The signed `xcodebuild test` command passes all 63 unit tests and all thirteen
 macOS UI tests. The build emits the expected metadata-extraction warning because
 WorkBench does not link App Intents. Xcode may also report debugger-version
 store noise or fail to collect a post-test OS log archive because
@@ -89,7 +91,7 @@ repeated during final acceptance verification.
 
 ## Verification still required
 
-The signed unsandboxed suite passes all 55 unit tests and all 13 UI tests. Save
+The signed unsandboxed suite passes all 63 unit tests and all 13 UI tests. Save
 and Open verification uses stable File commands rather than assuming macOS has
 kept trailing toolbar controls outside its overflow menu. The standalone signed
 app build succeeds and contains no App Sandbox entitlement.

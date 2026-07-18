@@ -117,7 +117,7 @@ Suggested boundaries are `BrowserLaunching`, `TerminalLaunching`, and `FinderLau
 
 Apple Events and scripting details belong inside the adapters. The architecture does not expose scripts as part of the Project model because Projects describe desired state, not implementation steps.
 
-### Planned AeroSpace boundary
+### AeroSpace boundary
 
 An optional Project-level launch destination may name one AeroSpace workspace.
 It is declarative Project data; machine-specific integration enablement and
@@ -157,6 +157,12 @@ not eligible for Mac App Store distribution unless this architecture is changed.
 Any production adapter must expose fixed typed operations rather than a generic
 command runner, validate all arguments, use bounded timeouts, and remain
 injectable for tests.
+
+`AeroSpaceClient` now provides the fixed workspace-list and workspace-activation
+operations through an injectable boundary. It invokes standard Homebrew CLI
+locations directly, applies a bounded timeout, parses JSON workspace records,
+and confirms the focused workspace after activation. It is not yet connected to
+the Project launch coordinator or UI recovery flow.
 
 ## JSON configuration schema
 

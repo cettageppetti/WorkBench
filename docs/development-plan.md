@@ -95,6 +95,16 @@ AeroSpace operations.
   validation, duplication, and disabled-setting behavior with unit tests before
   adding UI or external AeroSpace calls.
 
+### Typed AeroSpace client increment
+
+- Add injectable typed operations for workspace discovery and activation.
+- Invoke the CLI directly with argument arrays from standard Homebrew locations;
+  do not introduce a shell or generic command runner.
+- Bound every command and preserve distinct unavailable, launch, timeout,
+  command, response, and focus-confirmation failures.
+- Confirm the requested workspace is focused before activation succeeds.
+- Keep launch-preflight recovery and Settings/editor UI in later increments.
+
 ### Automated tests
 
 - Supported Resource encode/decode round trips
