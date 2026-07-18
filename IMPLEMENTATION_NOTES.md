@@ -26,6 +26,11 @@ The bundle identifier must be replaced with an appropriate reverse-DNS identifie
 
 Generated Info.plist files are used for both targets. The checked-in entitlements enable App Sandbox, user-selected read/write access, app-scoped bookmarks, Apple Events Automation, and temporary Apple Event exceptions limited to Safari, Terminal, and Finder, as established by the Phase 1 spikes.
 
+The app includes a custom macOS icon depicting three organized workspace panels
+on a workbench with a subtle launch motif. A standard `AppIcon.appiconset`
+provides all macOS renditions from 16×16 through 1024×1024; Release builds compile
+them into `AppIcon.icns` and `Assets.car` with `CFBundleIconName` set to `AppIcon`.
+
 ## Verification
 
 The baseline application and test suite pass with:
