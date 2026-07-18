@@ -224,6 +224,32 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testInvalidFileAndUnsupportedResourceRemainVisible() {
+        continueAfterFailure = false
+        let app = launchApp()
+        guard app.staticTexts["broken.json"].waitForExistence(timeout: 5) else {
+            XCTFail("Configuration issue was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        XCTAssertTrue(app.staticTexts["The file could not be decoded."].exists)
+
+        let futureProject = app.staticTexts["Future Project"]
+        XCTAssertTrue(futureProject.waitForExistence(timeout: 2))
+        futureProject.click()
+
+        let futureResource = app.staticTexts["Future Resource"]
+        XCTAssertTrue(futureResource.waitForExistence(timeout: 2))
+        futureResource.click()
+
+        XCTAssertTrue(app.staticTexts["future-resource"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts[
+            "This Resource type is unsupported. Its JSON will be preserved."
+        ].exists)
+        XCTAssertTrue(app.buttons["open-project-button"].isEnabled)
+    }
+
+    @MainActor
     private func renameSelectedProject(to name: String, in app: XCUIApplication) {
         let nameField = app.textFields["project-name-field"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 2))

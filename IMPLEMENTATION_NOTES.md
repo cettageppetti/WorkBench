@@ -214,7 +214,7 @@ The 48-test `WorkBenchTests` target also passes independently. Its login-home
 test now derives the expected home from the POSIX password database because
 Foundation's named-user lookup returns the app-container home under the current
 macOS test sandbox. The complete signed scheme passes all 48 unit tests and all
-seven UI tests together. Xcode intermittently reports that it cannot collect an OS log
+eight UI tests together. Xcode intermittently reports that it cannot collect an OS log
 archive because `version.plist` cannot be read; this post-test infrastructure
 warning does not affect test execution or results. Terminal's App Management
 permission may be revoked after command-line UI testing is complete.
@@ -248,3 +248,7 @@ A seventh end-to-end test changes Home Terminal to an invalid relative path and
 invokes Open Project. It verifies the consolidated launch-report title and path
 validation guidance, then dismisses the report. Validation stops launch before
 the Debug-only no-op adapters can be called, so no external application opens.
+
+An eighth end-to-end test verifies that a malformed Project file remains visible
+as a configuration issue and that an unsupported Resource remains selectable,
+identifies its preserved type, and does not prevent its Project from being opened.

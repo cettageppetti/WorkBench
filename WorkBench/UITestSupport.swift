@@ -17,10 +17,30 @@ enum UITestModelFactory {
                 || defaults.bool(forKey: "workbenchUITesting") else { return nil }
         if let model { return model }
 
-        let repository = UITestProjectRepository(projects: [
-            .starter(),
-            Project(name: "Second Project", resources: [])
-        ])
+        let repository = UITestProjectRepository(
+            projects: [
+                .starter(),
+                Project(name: "Second Project", resources: []),
+                Project(
+                    name: "Future Project",
+                    resources: [
+                        Resource(
+                            name: "Future Resource",
+                            payload: .unsupported(
+                                type: "future-resource",
+                                rawObject: ["type": .string("future-resource")]
+                            )
+                        )
+                    ]
+                )
+            ],
+            issues: [
+                ProjectFileIssue(
+                    fileURL: URL(fileURLWithPath: "/WorkBench/broken.json"),
+                    message: "The file could not be decoded."
+                )
+            ]
+        )
         let workflow = ProjectWorkflow(repository: repository)
         try? workflow.load()
 
@@ -45,13 +65,15 @@ enum UITestModelFactory {
 @MainActor
 private final class UITestProjectRepository: ProjectRepositorying {
     private var projects: [Project]
+    private let issues: [ProjectFileIssue]
 
-    init(projects: [Project]) {
+    init(projects: [Project], issues: [ProjectFileIssue] = []) {
         self.projects = projects
+        self.issues = issues
     }
 
     func load() throws -> ProjectRepositorySnapshot {
-        ProjectRepositorySnapshot(projects: projects, issues: [])
+        ProjectRepositorySnapshot(projects: projects, issues: issues)
     }
 
     func save(_ project: Project) throws {
