@@ -100,6 +100,18 @@ absent. WorkBench does not rewrite files merely because it loaded them. The next
 save writes schema version 2. Versions newer than 2 remain unreadable so an
 older WorkBench cannot silently discard fields it does not understand.
 
+## Editing AeroSpace destinations
+
+Open **WorkBench > Settings** to enable the machine-local AeroSpace integration
+and check whether WorkBench can list workspaces. This preference is not written
+to Project JSON.
+
+Select **Project Settings** above the Resource list to choose normal window
+placement or an AeroSpace workspace. The workspace field accepts manual names
+even when AeroSpace is unavailable. **Refresh Workspaces** adds the names
+reported by the current machine to a choice menu without replacing the manual
+value. Save the Project to persist its destination.
+
 ## Resolving errors
 
 When a file is reported as invalid:

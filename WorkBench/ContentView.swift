@@ -65,6 +65,19 @@ struct ContentView: View {
         .sheet(item: $model.launchReport) { report in
             LaunchReportView(report: report) { model.launchReport = nil }
         }
+        .alert(
+            "Couldn’t Open Project in Its Workspace",
+            isPresented: Binding(
+                get: { model.pendingLaunchPlacementFailure != nil },
+                set: { if !$0 { model.cancelPendingProjectLaunch() } }
+            )
+        ) {
+            Button("Open Without Placement", action: model.openPendingProjectWithoutPlacement)
+                .accessibilityIdentifier("open-without-placement-button")
+            Button("Cancel", role: .cancel, action: model.cancelPendingProjectLaunch)
+        } message: {
+            Text(model.pendingLaunchPlacementFailure?.reason.message ?? "Workspace activation failed.")
+        }
     }
 
     private func folderSelection(message: String?) -> some View {
@@ -105,6 +118,9 @@ struct ContentView: View {
             .navigationTitle("Projects")
         } content: {
             List(selection: $model.selectedResourceID) {
+                Label("Project Settings", systemImage: "gearshape")
+                    .tag(nil as ResourceID?)
+                    .accessibilityIdentifier("project-settings-row")
                 ForEach(workflow.draft?.resources ?? [], id: \.id) { resource in
                     Label(resource.name, systemImage: icon(for: resource.payload))
                         .tag(resource.id)
@@ -162,10 +178,12 @@ struct ContentView: View {
                 .disabled(workflow.draft == nil)
             }
             ToolbarItemGroup(placement: .primaryAction) {
-                Button("Open Project", systemImage: "play.fill", action: model.openSelectedProject)
+                Button("Open Project", systemImage: "play.fill") {
+                    Task { await model.openSelectedProject() }
+                }
                     .labelStyle(.titleAndIcon)
                     .accessibilityIdentifier("open-project-button")
-                    .disabled(workflow.draft == nil)
+                    .disabled(workflow.draft == nil || model.isOpeningProject)
                 Button("Save", systemImage: "square.and.arrow.down", action: model.save)
                     .labelStyle(.titleAndIcon)
                     .accessibilityIdentifier("save-project-button")
@@ -195,11 +213,62 @@ struct ContentView: View {
                         .accessibilityIdentifier("unsaved-changes-indicator")
                         .foregroundStyle(.orange)
                 }
+                launchDestinationFields(workflow: workflow)
                 validationMessages(for: workflow.draft)
             }
             .formStyle(.grouped)
         } else {
             ContentUnavailableView("No Project Selected", systemImage: "hammer")
+        }
+    }
+
+    @ViewBuilder
+    private func launchDestinationFields(workflow: ProjectWorkflow) -> some View {
+        Section("Launch Destination") {
+            switch workflow.draft?.launchDestination {
+            case nil:
+                Picker("Placement", selection: launchDestinationKindBinding(workflow)) {
+                    Text("Normal Window Placement").tag(LaunchDestinationKind.none)
+                    Text("AeroSpace Workspace").tag(LaunchDestinationKind.aeroSpace)
+                }
+                .accessibilityIdentifier("launch-destination-picker")
+            case .aeroSpaceWorkspace:
+                Picker("Placement", selection: launchDestinationKindBinding(workflow)) {
+                    Text("Normal Window Placement").tag(LaunchDestinationKind.none)
+                    Text("AeroSpace Workspace").tag(LaunchDestinationKind.aeroSpace)
+                }
+                .accessibilityIdentifier("launch-destination-picker")
+                TextField("Workspace", text: aeroSpaceWorkspaceBinding(workflow))
+                    .accessibilityIdentifier("aerospace-workspace-field")
+                if !model.availableAeroSpaceWorkspaces.isEmpty {
+                    Menu("Choose Available Workspace") {
+                        ForEach(model.availableAeroSpaceWorkspaces, id: \.self) { workspace in
+                            Button(workspace) {
+                                model.updateDraft {
+                                    $0.launchDestination = .aeroSpaceWorkspace(workspace)
+                                }
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("available-workspaces-menu")
+                }
+                Button(model.isDiscoveringAeroSpaceWorkspaces ? "Refreshing…" : "Refresh Workspaces") {
+                    Task { await model.discoverAeroSpaceWorkspaces() }
+                }
+                .disabled(model.isDiscoveringAeroSpaceWorkspaces)
+                .accessibilityIdentifier("refresh-workspaces-button")
+                if let error = model.aeroSpaceWorkspaceDiscoveryError {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                }
+            case let .unsupported(type, _):
+                LabeledContent("Placement Type", value: type)
+                Label(
+                    "This launch destination is unsupported. Its JSON will be preserved.",
+                    systemImage: "questionmark.diamond"
+                )
+                .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -288,6 +357,32 @@ struct ContentView: View {
         Binding(get: { workflow.draft?.name ?? "" }, set: { name in model.updateDraft { $0.name = name } })
     }
 
+    private func launchDestinationKindBinding(_ workflow: ProjectWorkflow) -> Binding<LaunchDestinationKind> {
+        Binding(get: {
+            if case .aeroSpaceWorkspace = workflow.draft?.launchDestination { .aeroSpace } else { .none }
+        }, set: { kind in
+            model.updateDraft { project in
+                switch kind {
+                case .none:
+                    project.launchDestination = nil
+                case .aeroSpace:
+                    project.launchDestination = .aeroSpaceWorkspace("")
+                }
+            }
+        })
+    }
+
+    private func aeroSpaceWorkspaceBinding(_ workflow: ProjectWorkflow) -> Binding<String> {
+        Binding(get: {
+            guard case let .aeroSpaceWorkspace(workspace) = workflow.draft?.launchDestination else {
+                return ""
+            }
+            return workspace
+        }, set: { workspace in
+            model.updateDraft { $0.launchDestination = .aeroSpaceWorkspace(workspace) }
+        })
+    }
+
     private func resourceNameBinding(resourceID: ResourceID, workflow: ProjectWorkflow) -> Binding<String> {
         Binding(get: {
             workflow.draft?.resources.first(where: { $0.id == resourceID })?.name ?? ""
@@ -360,6 +455,45 @@ struct ContentView: View {
         panel.directoryURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
         guard panel.runModal() == .OK, let url = panel.url else { return }
         model.selectDirectory(url)
+    }
+}
+
+private enum LaunchDestinationKind: Hashable {
+    case none
+    case aeroSpace
+}
+
+struct AeroSpaceSettingsView: View {
+    @Bindable var model: AeroSpaceSettingsModel
+
+    var body: some View {
+        Form {
+            Section("AeroSpace") {
+                Toggle("Enable AeroSpace integration", isOn: Binding(
+                    get: { model.settings.isEnabled },
+                    set: { model.setEnabled($0) }
+                ))
+                .accessibilityIdentifier("enable-aerospace-toggle")
+                Text("WorkBench activates a Project’s configured workspace before opening its Resources.")
+                    .foregroundStyle(.secondary)
+                if model.settings.isEnabled {
+                    Button(model.isDiscovering ? "Checking…" : "Check Connection") {
+                        Task { await model.discoverWorkspaces() }
+                    }
+                    .disabled(model.isDiscovering)
+                    if !model.workspaces.isEmpty {
+                        LabeledContent("Available Workspaces", value: model.workspaces.joined(separator: ", "))
+                    }
+                    if let error = model.discoveryError {
+                        Label(error, systemImage: "exclamationmark.triangle")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 520)
+        .padding()
     }
 }
 

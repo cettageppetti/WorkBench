@@ -9,6 +9,29 @@ enum AeroSpaceClientError: Error, Equatable {
     case workspaceNotFocused(expected: String, actual: String?)
 }
 
+extension AeroSpaceClientError {
+    var recoveryMessage: String {
+        switch self {
+        case .executableUnavailable:
+            "The AeroSpace command-line tool was not found in a standard Homebrew location."
+        case let .processCouldNotStart(message):
+            "WorkBench could not start AeroSpace: \(message)"
+        case .timedOut:
+            "AeroSpace did not respond before the operation timed out."
+        case let .commandFailed(_, message):
+            "AeroSpace could not activate the workspace: \(message)"
+        case .invalidResponse:
+            "AeroSpace returned a response that WorkBench could not understand."
+        case let .workspaceNotFocused(expected, actual):
+            if let actual {
+                "AeroSpace focused workspace \"\(actual)\" instead of \"\(expected)\"."
+            } else {
+                "AeroSpace did not report a focused workspace after activating \"\(expected)\"."
+            }
+        }
+    }
+}
+
 protocol AeroSpaceControlling {
     func listWorkspaces() async -> Result<[String], AeroSpaceClientError>
     func activateWorkspace(named workspace: String) async -> Result<Void, AeroSpaceClientError>

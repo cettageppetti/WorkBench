@@ -358,6 +358,86 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testPlacementFailureCanBeCancelledOrOpenedWithoutPlacement() {
+        continueAfterFailure = false
+        let app = launchApp()
+        let placedProject = app.staticTexts["Placed Project"]
+        guard placedProject.waitForExistence(timeout: 5) else {
+            XCTFail("Placed Project was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+        placedProject.click()
+
+        app.typeKey("o", modifierFlags: .command)
+
+        let alert = app.sheets.firstMatch
+        XCTAssertTrue(alert.waitForExistence(timeout: 2))
+        XCTAssertTrue(alert.staticTexts["Couldn’t Open Project in Its Workspace"].exists)
+        XCTAssertTrue(alert.staticTexts["AeroSpace integration is disabled in Settings."].exists)
+        alert.buttons["Cancel"].click()
+        XCTAssertFalse(alert.waitForExistence(timeout: 1))
+
+        app.typeKey("o", modifierFlags: .command)
+        XCTAssertTrue(alert.waitForExistence(timeout: 2))
+        let openWithoutPlacement = alert.buttons["Open Without Placement"]
+        XCTAssertTrue(openWithoutPlacement.exists)
+        openWithoutPlacement.click()
+        XCTAssertFalse(alert.waitForExistence(timeout: 1))
+    }
+
+    @MainActor
+    func testProjectLaunchDestinationCanBeEditedAndSaved() {
+        continueAfterFailure = false
+        let app = launchApp()
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        let projectSettings = app.staticTexts["Project Settings"]
+        XCTAssertTrue(projectSettings.waitForExistence(timeout: 2))
+        projectSettings.click()
+
+        let placement = app.popUpButtons["launch-destination-picker"]
+        XCTAssertTrue(placement.waitForExistence(timeout: 2))
+        placement.click()
+        app.menuItems["AeroSpace Workspace"].click()
+        app.typeKey(.escape, modifierFlags: [])
+
+        let workspace = app.textFields["aerospace-workspace-field"]
+        XCTAssertTrue(workspace.waitForExistence(timeout: 2))
+        workspace.click()
+        workspace.typeText("N")
+        XCTAssertTrue(app.staticTexts["unsaved-changes-indicator"].exists)
+
+        app.typeKey("s", modifierFlags: .command)
+
+        XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 1))
+        XCTAssertEqual(workspace.value as? String, "N")
+    }
+
+    @MainActor
+    func testAeroSpaceSettingsCanBeEnabledAndConnectionChecked() {
+        continueAfterFailure = false
+        let app = launchApp()
+        guard app.staticTexts["Starter Project"].waitForExistence(timeout: 5) else {
+            XCTFail("Starter Project was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        app.typeKey(",", modifierFlags: .command)
+
+        let toggle = app.switches["enable-aerospace-toggle"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 2))
+        toggle.click()
+
+        let checkConnection = app.buttons["Check Connection"]
+        XCTAssertTrue(checkConnection.waitForExistence(timeout: 2))
+        checkConnection.click()
+        XCTAssertTrue(app.staticTexts["1, 2"].waitForExistence(timeout: 2))
+    }
+
+    @MainActor
     func testInvalidFileAndUnsupportedResourceRemainVisible() {
         continueAfterFailure = false
         let app = launchApp()

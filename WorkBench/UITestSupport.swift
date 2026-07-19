@@ -23,6 +23,11 @@ enum UITestModelFactory {
                 .starter(),
                 Project(name: "Second Project", resources: []),
                 Project(
+                    name: "Placed Project",
+                    resources: [],
+                    launchDestination: .aeroSpaceWorkspace("2")
+                ),
+                Project(
                     name: "Future Project",
                     resources: [
                         Resource(
@@ -59,10 +64,19 @@ enum UITestModelFactory {
         let model = WorkBenchApplicationModel(
             directoryAccess: directoryAccess,
             workflow: workflow,
-            launcher: launcher
+            launcher: launcher,
+            aeroSpaceController: UITestAeroSpaceController(),
+            aeroSpaceSettingsStore: UITestAeroSpaceSettingsStore()
         )
         self.model = model
         return model
+    }
+
+    static func makeSettingsModel() -> AeroSpaceSettingsModel {
+        AeroSpaceSettingsModel(
+            store: UITestAeroSpaceSettingsStore(),
+            controller: UITestAeroSpaceController()
+        )
     }
 }
 
@@ -106,5 +120,19 @@ private struct UITestTerminalLauncher: TerminalLaunching {
 @MainActor
 private struct UITestFinderLauncher: FinderLaunching {
     func open(_ finder: FinderWindow) -> String? { nil }
+}
+
+@MainActor
+private struct UITestAeroSpaceController: AeroSpaceControlling {
+    func listWorkspaces() async -> Result<[String], AeroSpaceClientError> { .success(["1", "2"]) }
+    func activateWorkspace(named workspace: String) async -> Result<Void, AeroSpaceClientError> {
+        .success(())
+    }
+}
+
+@MainActor
+private struct UITestAeroSpaceSettingsStore: AeroSpaceIntegrationSettingsStoring {
+    func load() -> AeroSpaceIntegrationSettings { AeroSpaceIntegrationSettings(isEnabled: false) }
+    func save(_ settings: AeroSpaceIntegrationSettings) {}
 }
 #endif

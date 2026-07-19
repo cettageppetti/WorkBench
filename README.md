@@ -23,6 +23,11 @@ The MVP will answer one question: can a user describe a working environment as a
 - Load hand-edited configuration files at launch or through the standard macOS **Reload Configurations** command.
 - Report invalid files and unsupported Resource types without hiding them.
 - Continue opening the remaining Resources when an individual Resource fails.
+- Optionally activate a Project-level AeroSpace workspace before opening Resources.
+
+AeroSpace integration is enabled per machine in **WorkBench > Settings**.
+Select **Project Settings** above a Project's Resources to configure its optional
+AeroSpace workspace destination.
 
 On first launch, WorkBench creates a **Starter Project** that opens:
 

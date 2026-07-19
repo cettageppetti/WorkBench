@@ -28,8 +28,7 @@ Project duplication copies the destination, while the Starter Project has none.
 Machine-specific `aeroSpaceIntegrationEnabled` state belongs in a typed
 `UserDefaults` Settings store and defaults to false. Project JSON never contains
 an executable path or socket detail. The production model, migration,
-validation, Settings store, and persistence tests implement this contract. The
-Settings UI and Project destination editor remain separate follow-up increments.
+validation, Settings store, and persistence tests implement this contract.
 
 ## Typed AeroSpace client
 
@@ -42,10 +41,35 @@ failure, timeout, nonzero exit, malformed JSON, or failed focus confirmation.
 
 Activation sends the workspace name as one argument after `--`, then queries the
 focused workspace and requires an exact match before reporting success. The
-client remains separate from `ProjectLauncher`; the launch-preflight recovery
-coordinator is the next increment. A read-only check against the locally
-installed AeroSpace `0.21.2-Beta` confirmed the expected JSON object shape. The
-complete signed scheme passes all 63 unit tests and all 13 UI tests.
+client remains separate from `ProjectLauncher` and is called by the application
+model as an asynchronous launch preflight. A read-only check against the locally
+installed AeroSpace `0.21.2-Beta` confirmed the expected JSON object shape.
+
+The preflight validates first, then bypasses placement for destination-free
+Projects or activates and confirms a known AeroSpace destination when the
+machine-local integration setting is enabled. Disabled integration, activation
+failure, and unknown destination types launch no Resources and retain the
+attempted Project snapshot for explicit **Open Without Placement** or **Cancel**
+recovery. The Open command is disabled while activation is in progress. UI-test
+doubles never contact AeroSpace or move the active workspace. After the Settings
+and editor increment, the complete signed scheme passes all 71 unit tests and
+all 16 UI tests.
+
+## AeroSpace Settings and Project editor
+
+The native Settings scene owns an observable machine-local Settings model. Its
+enable toggle writes through to `UserDefaults` immediately; while enabled, the
+user may check the AeroSpace connection and see the reported workspace names or
+a typed discovery error. UI tests use an isolated in-memory store, so they never
+alter the developer's real integration preference.
+
+The Resources column now begins with a selectable **Project Settings** row, and
+selecting a Project lands on that row rather than implicitly selecting its first
+Resource. Project Settings offers normal placement or AeroSpace placement. An
+AeroSpace destination has an editable workspace field for offline and portable
+configuration, an explicit refresh action, and a menu of reported workspaces.
+Discovery never replaces a manual value unless the user chooses a reported
+workspace. Unsupported destinations remain visible and preserved.
 
 ## AeroSpace sandbox communication spike
 

@@ -105,6 +105,26 @@ AeroSpace operations.
 - Confirm the requested workspace is focused before activation succeeds.
 - Keep launch-preflight recovery and Settings/editor UI in later increments.
 
+### AeroSpace launch-preflight increment
+
+- Validate before invoking AeroSpace or any Resource adapter.
+- Activate and confirm a configured workspace before launching Resources.
+- Treat disabled integration, activation errors, and unknown destinations as
+  recoverable placement failures that initially launch nothing.
+- Capture the attempted Project for explicit **Open Without Placement** or
+  **Cancel** recovery and prevent concurrent Open requests.
+- Exercise recovery through deterministic UI-test adapters that never contact
+  the user's AeroSpace process.
+
+### AeroSpace Settings and editor increment
+
+- Add a native Settings scene for machine-local enablement and connection
+  checks, with actionable discovery failures.
+- Make Project-level properties explicitly selectable above the Resource list.
+- Offer normal placement, manual AeroSpace workspace entry, refresh, and
+  user-selected reported workspace names without overwriting portable values.
+- Keep Settings UI tests isolated from real preferences and AeroSpace state.
+
 ### Automated tests
 
 - Supported Resource encode/decode round trips

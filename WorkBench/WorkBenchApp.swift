@@ -35,15 +35,18 @@ final class WorkBenchAppDelegate: NSObject, NSApplicationDelegate {
 struct WorkBenchApp: App {
     @NSApplicationDelegateAdaptor(WorkBenchAppDelegate.self) private var appDelegate
     @State private var model: WorkBenchApplicationModel
+    @State private var aeroSpaceSettingsModel: AeroSpaceSettingsModel
 
     init() {
 #if DEBUG
         if let testModel = UITestModelFactory.makeIfRequested() {
             _model = State(initialValue: testModel)
+            _aeroSpaceSettingsModel = State(initialValue: UITestModelFactory.makeSettingsModel())
             return
         }
 #endif
         _model = State(initialValue: WorkBenchApplicationModel())
+        _aeroSpaceSettingsModel = State(initialValue: AeroSpaceSettingsModel())
     }
 
     var body: some Scene {
@@ -53,14 +56,19 @@ struct WorkBenchApp: App {
         }
         .commands {
             CommandGroup(replacing: .saveItem) {
-                Button("Open Project", action: model.openSelectedProject)
+                Button("Open Project") {
+                    Task { await model.openSelectedProject() }
+                }
                     .keyboardShortcut("o", modifiers: .command)
-                    .disabled(model.workflow?.draft == nil)
+                    .disabled(model.workflow?.draft == nil || model.isOpeningProject)
                 Button("Save", action: model.save)
                     .keyboardShortcut("s", modifiers: .command)
                 Button("Reload Configurations", action: model.reload)
                     .keyboardShortcut("r", modifiers: [.command, .shift])
             }
+        }
+        Settings {
+            AeroSpaceSettingsView(model: aeroSpaceSettingsModel)
         }
     }
 }

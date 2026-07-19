@@ -161,8 +161,19 @@ injectable for tests.
 `AeroSpaceClient` now provides the fixed workspace-list and workspace-activation
 operations through an injectable boundary. It invokes standard Homebrew CLI
 locations directly, applies a bounded timeout, parses JSON workspace records,
-and confirms the focused workspace after activation. It is not yet connected to
-the Project launch coordinator or UI recovery flow.
+and confirms the focused workspace after activation.
+
+`WorkBenchApplicationModel` coordinates the asynchronous preflight before
+calling the synchronous Resource launcher. It captures the attempted Project so
+the recovery action cannot accidentally launch a subsequently edited or selected
+Project. Placement failures expose only **Open Without Placement** and **Cancel**;
+no Resource adapter runs before one of those paths permits it.
+
+The macOS Settings scene uses `AeroSpaceSettingsModel` for machine-local
+enablement and connection checks. The Project editor talks only to the draft and
+stores the typed destination in Project JSON. Workspace discovery supplies
+optional choices but is not authoritative during editing: manual names remain
+editable and are validated by AeroSpace only during launch preflight.
 
 ## JSON configuration schema
 

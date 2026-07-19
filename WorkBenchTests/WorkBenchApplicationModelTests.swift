@@ -64,7 +64,7 @@ final class WorkBenchApplicationModelTests: XCTestCase {
         XCTAssertEqual(workflow.selectedProjectID, first.id)
     }
 
-    func testOpenInvalidDraftPresentsConsolidatedLaunchReport() throws {
+    func testOpenInvalidDraftPresentsConsolidatedLaunchReport() async throws {
         let invalid = Project(
             name: "Invalid",
             resources: [Resource(name: "Empty Browser", payload: .browserWindow(BrowserWindow(tabs: [])))]
@@ -72,11 +72,109 @@ final class WorkBenchApplicationModelTests: XCTestCase {
         let workflow = try makeWorkflow(projects: [invalid])
         let model = WorkBenchApplicationModel(workflow: workflow, launcher: ProjectLauncher())
 
-        model.openSelectedProject()
+        await model.openSelectedProject()
 
         XCTAssertEqual(model.launchReport?.projectID, invalid.id)
         XCTAssertFalse(model.launchReport?.validationIssues.isEmpty ?? true)
         XCTAssertTrue(model.launchReport?.results.isEmpty == true)
+    }
+
+    func testProjectWithoutDestinationLaunchesWithoutAeroSpace() async throws {
+        let recorder = LaunchPreflightRecorder()
+        let project = Project(
+            name: "No Placement",
+            resources: [Resource(name: "Browser", payload: .browserWindow(BrowserWindow(tabs: ["https://example.com"])))]
+        )
+        let model = try makeModel(project: project, recorder: recorder, integrationEnabled: false)
+
+        await model.openSelectedProject()
+
+        XCTAssertEqual(recorder.events, ["resource"])
+        XCTAssertNil(model.pendingLaunchPlacementFailure)
+    }
+
+    func testEnabledDestinationActivatesBeforeResourcesLaunch() async throws {
+        let recorder = LaunchPreflightRecorder()
+        var project = Project(
+            name: "Placed",
+            resources: [Resource(name: "Browser", payload: .browserWindow(BrowserWindow(tabs: ["https://example.com"])))]
+        )
+        project.launchDestination = .aeroSpaceWorkspace("2")
+        let model = try makeModel(project: project, recorder: recorder, integrationEnabled: true)
+
+        await model.openSelectedProject()
+
+        XCTAssertEqual(recorder.events, ["workspace:2", "resource"])
+        XCTAssertNil(model.pendingLaunchPlacementFailure)
+    }
+
+    func testDisabledIntegrationRequiresExplicitRecoveryBeforeLaunching() async throws {
+        let recorder = LaunchPreflightRecorder()
+        var project = Project(name: "Placed", resources: [browserResource()])
+        project.launchDestination = .aeroSpaceWorkspace("2")
+        let model = try makeModel(project: project, recorder: recorder, integrationEnabled: false)
+
+        await model.openSelectedProject()
+
+        XCTAssertTrue(recorder.events.isEmpty)
+        XCTAssertEqual(model.pendingLaunchPlacementFailure?.reason, .integrationDisabled)
+
+        model.openPendingProjectWithoutPlacement()
+
+        XCTAssertEqual(recorder.events, ["resource"])
+        XCTAssertNil(model.pendingLaunchPlacementFailure)
+    }
+
+    func testActivationFailureCanBeCancelledWithoutLaunching() async throws {
+        let recorder = LaunchPreflightRecorder(activationError: .timedOut)
+        var project = Project(name: "Placed", resources: [browserResource()])
+        project.launchDestination = .aeroSpaceWorkspace("work")
+        let model = try makeModel(project: project, recorder: recorder, integrationEnabled: true)
+
+        await model.openSelectedProject()
+
+        XCTAssertEqual(recorder.events, ["workspace:work"])
+        XCTAssertEqual(model.pendingLaunchPlacementFailure?.reason, .aeroSpace(.timedOut))
+
+        model.cancelPendingProjectLaunch()
+
+        XCTAssertNil(model.pendingLaunchPlacementFailure)
+        XCTAssertEqual(recorder.events, ["workspace:work"])
+    }
+
+    func testUnsupportedDestinationUsesPlacementRecovery() async throws {
+        let recorder = LaunchPreflightRecorder()
+        var project = Project(name: "Future", resources: [browserResource()])
+        project.launchDestination = .unsupported(
+            type: "future-space",
+            rawObject: ["type": .string("future-space")]
+        )
+        let model = try makeModel(project: project, recorder: recorder, integrationEnabled: true)
+
+        await model.openSelectedProject()
+
+        XCTAssertTrue(recorder.events.isEmpty)
+        XCTAssertEqual(
+            model.pendingLaunchPlacementFailure?.reason,
+            .unsupportedDestination("future-space")
+        )
+    }
+
+    private func makeModel(
+        project: Project,
+        recorder: LaunchPreflightRecorder,
+        integrationEnabled: Bool
+    ) throws -> WorkBenchApplicationModel {
+        WorkBenchApplicationModel(
+            workflow: try makeWorkflow(projects: [project]),
+            launcher: ProjectLauncher(browserLauncher: RecordingBrowserLauncher(recorder: recorder)),
+            aeroSpaceController: RecordingAeroSpaceController(recorder: recorder),
+            aeroSpaceSettingsStore: AeroSpaceSettingsStoreStub(isEnabled: integrationEnabled)
+        )
+    }
+
+    private func browserResource() -> Resource {
+        Resource(name: "Browser", payload: .browserWindow(BrowserWindow(tabs: ["https://example.com"])))
     }
 
     private func makeWorkflow(projects: [Project]) throws -> ProjectWorkflow {
@@ -84,6 +182,51 @@ final class WorkBenchApplicationModelTests: XCTestCase {
         try workflow.load()
         return workflow
     }
+}
+
+@MainActor
+private final class LaunchPreflightRecorder {
+    var events: [String] = []
+    let activationError: AeroSpaceClientError?
+
+    init(activationError: AeroSpaceClientError? = nil) {
+        self.activationError = activationError
+    }
+}
+
+@MainActor
+private struct RecordingAeroSpaceController: AeroSpaceControlling {
+    let recorder: LaunchPreflightRecorder
+
+    func listWorkspaces() async -> Result<[String], AeroSpaceClientError> {
+        .success([])
+    }
+
+    func activateWorkspace(named workspace: String) async -> Result<Void, AeroSpaceClientError> {
+        recorder.events.append("workspace:\(workspace)")
+        return recorder.activationError.map(Result.failure) ?? .success(())
+    }
+}
+
+@MainActor
+private struct RecordingBrowserLauncher: BrowserLaunching {
+    let recorder: LaunchPreflightRecorder
+
+    func open(_ browser: BrowserWindow) -> String? {
+        recorder.events.append("resource")
+        return nil
+    }
+}
+
+@MainActor
+private struct AeroSpaceSettingsStoreStub: AeroSpaceIntegrationSettingsStoring {
+    let isEnabled: Bool
+
+    func load() -> AeroSpaceIntegrationSettings {
+        AeroSpaceIntegrationSettings(isEnabled: isEnabled)
+    }
+
+    func save(_ settings: AeroSpaceIntegrationSettings) {}
 }
 
 @MainActor

@@ -2,6 +2,30 @@ import AppKit
 import Observation
 import SwiftUI
 
+enum LaunchPlacementFailureReason: Equatable {
+    case integrationDisabled
+    case unsupportedDestination(String)
+    case aeroSpace(AeroSpaceClientError)
+
+    var message: String {
+        switch self {
+        case .integrationDisabled:
+            "AeroSpace integration is disabled in Settings."
+        case let .unsupportedDestination(type):
+            "The launch destination type \"\(type)\" is not supported by this version of WorkBench."
+        case let .aeroSpace(error):
+            error.recoveryMessage
+        }
+    }
+}
+
+struct PendingLaunchPlacementFailure: Equatable, Identifiable {
+    let project: Project
+    let reason: LaunchPlacementFailureReason
+
+    var id: ProjectID { project.id }
+}
+
 @MainActor
 @Observable
 final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
@@ -12,18 +36,30 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
     var showsUnsavedChangesDialog = false
     var projectPendingDeletion: Project?
     var launchReport: LaunchReport?
+    var pendingLaunchPlacementFailure: PendingLaunchPlacementFailure?
+    private(set) var isOpeningProject = false
+    private(set) var availableAeroSpaceWorkspaces: [String] = []
+    private(set) var aeroSpaceWorkspaceDiscoveryError: String?
+    private(set) var isDiscoveringAeroSpaceWorkspaces = false
 
     @ObservationIgnored private var attemptedInitialSelection = false
     @ObservationIgnored private let launcher: ProjectLauncher
+    @ObservationIgnored private let aeroSpaceController: any AeroSpaceControlling
+    @ObservationIgnored private let aeroSpaceSettingsStore: any AeroSpaceIntegrationSettingsStoring
 
     init(
         directoryAccess: ConfigurationDirectoryAccess = ConfigurationDirectoryAccess(),
         workflow: ProjectWorkflow? = nil,
-        launcher: ProjectLauncher = ProjectLauncher()
+        launcher: ProjectLauncher = ProjectLauncher(),
+        aeroSpaceController: any AeroSpaceControlling = AeroSpaceClient(),
+        aeroSpaceSettingsStore: any AeroSpaceIntegrationSettingsStoring =
+            UserDefaultsAeroSpaceIntegrationSettingsStore()
     ) {
         self.directoryAccess = directoryAccess
         self.workflow = workflow
         self.launcher = launcher
+        self.aeroSpaceController = aeroSpaceController
+        self.aeroSpaceSettingsStore = aeroSpaceSettingsStore
     }
 
     func start() {
@@ -65,11 +101,65 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
         request(.reload)
     }
 
-    func openSelectedProject() {
-        guard let project = workflow?.draft else { return }
-        let report = launcher.open(project)
-        if report.hasProblems {
-            launchReport = report
+    func openSelectedProject() async {
+        guard !isOpeningProject, let project = workflow?.draft else { return }
+        let validationIssues = ProjectValidator.validate(project)
+        guard validationIssues.isEmpty else {
+            presentLaunchReport(launcher.open(project))
+            return
+        }
+
+        isOpeningProject = true
+        defer { isOpeningProject = false }
+        switch project.launchDestination {
+        case nil:
+            presentLaunchReport(launcher.open(project))
+        case let .aeroSpaceWorkspace(workspace):
+            guard aeroSpaceSettingsStore.load().isEnabled else {
+                pendingLaunchPlacementFailure = PendingLaunchPlacementFailure(
+                    project: project,
+                    reason: .integrationDisabled
+                )
+                return
+            }
+            switch await aeroSpaceController.activateWorkspace(named: workspace) {
+            case .success:
+                presentLaunchReport(launcher.open(project))
+            case let .failure(error):
+                pendingLaunchPlacementFailure = PendingLaunchPlacementFailure(
+                    project: project,
+                    reason: .aeroSpace(error)
+                )
+            }
+        case let .unsupported(type, _):
+            pendingLaunchPlacementFailure = PendingLaunchPlacementFailure(
+                project: project,
+                reason: .unsupportedDestination(type)
+            )
+        }
+    }
+
+    func openPendingProjectWithoutPlacement() {
+        guard let failure = pendingLaunchPlacementFailure else { return }
+        pendingLaunchPlacementFailure = nil
+        presentLaunchReport(launcher.open(failure.project))
+    }
+
+    func cancelPendingProjectLaunch() {
+        pendingLaunchPlacementFailure = nil
+    }
+
+    func discoverAeroSpaceWorkspaces() async {
+        guard !isDiscoveringAeroSpaceWorkspaces else { return }
+        isDiscoveringAeroSpaceWorkspaces = true
+        defer { isDiscoveringAeroSpaceWorkspaces = false }
+        switch await aeroSpaceController.listWorkspaces() {
+        case let .success(workspaces):
+            availableAeroSpaceWorkspaces = workspaces
+            aeroSpaceWorkspaceDiscoveryError = nil
+        case let .failure(error):
+            availableAeroSpaceWorkspaces = []
+            aeroSpaceWorkspaceDiscoveryError = error.recoveryMessage
         }
     }
 
@@ -159,7 +249,7 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
         do {
             try workflow.load()
             self.workflow = workflow
-            selectedResourceID = workflow.draft?.resources.first?.id
+            selectedResourceID = nil
         } catch {
             present(error)
         }
@@ -179,7 +269,7 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
         case .needsUnsavedChangesDecision:
             showsUnsavedChangesDialog = true
         case .completed, .cancelled:
-            selectedResourceID = workflow?.draft?.resources.first?.id
+            selectedResourceID = nil
         }
     }
 
@@ -218,6 +308,12 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
 
     private func present(_ error: Error) {
         presentedError = error.localizedDescription
+    }
+
+    private func presentLaunchReport(_ report: LaunchReport) {
+        if report.hasProblems {
+            launchReport = report
+        }
     }
 
     private func normalized(_ name: String) -> String {
