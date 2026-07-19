@@ -120,6 +120,11 @@ Re-enabling Chrome in System Settings completed permission recovery. The next
 mixed launch required no new prompt, produced no failure report, and placed all
 four newly created application windows in workspace `6`.
 
+A signed Chrome acceptance launch opened Example Domain, Chromium, and Apple in
+saved left-to-right order in one new window in workspace `6`. Reopening the
+Project preserved the first window and created exactly one additional ordered
+three-tab window in `6`.
+
 ## Verification still required
 
 The signed unsandboxed suite passes all 81 unit tests and all 16 UI tests. Save
@@ -139,8 +144,6 @@ back door or weaken the Automation boundary.
 - Exercise Automation permission denial and revocation independently for
   Safari, Terminal, and Finder. Chrome denial, later-Resource continuation,
   application-specific reporting, and System Settings recovery are verified.
-- Verify a signed Chrome Window launch creates a new window with tabs
-  in saved order and that repeated launch creates another window.
 - Run the complete acceptance scenario from a clean configuration and clean
   privacy-permission state.
 - Measure UI responsiveness during repository operations and a complete
@@ -152,8 +155,8 @@ back door or weaken the Automation boundary.
   signing for distribution.
 - Reassess the targeted temporary Apple Events exceptions for the intended
   distribution channel.
-- Review the intermittent cosmetic duplicate `cd` display in Terminal and
-  either resolve it or retain it as a documented limitation.
+- The intermittent cosmetic duplicate `cd` display in Terminal is sufficiently
+  resolved by the home-directory special case and is accepted for the MVP.
 - Perform a clean build, review warnings, rerun all automated tests, and inspect
   the final diff for generated artifacts, secrets, and unrelated changes.
 

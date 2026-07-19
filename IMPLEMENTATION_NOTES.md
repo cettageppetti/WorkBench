@@ -117,6 +117,12 @@ completed recovery without another prompt or launch report. The next mixed
 launch again created one Chrome, Safari, Terminal, and Finder window, and every
 new window finished in workspace `6`.
 
+The signed multi-tab Chrome acceptance used Example Domain, Chromium, and Apple
+in that saved order. The first launch created exactly one three-tab window in
+workspace `6`. Reopening the Project preserved that window and created exactly
+one additional three-tab window in `6`; both reported Apple as the active third
+tab and the user visually confirmed the left-to-right tab order.
+
 The preflight validates first, then bypasses placement for destination-free
 Projects or activates and confirms a known AeroSpace destination when the
 machine-local integration setting is enabled. Disabled integration, activation
@@ -403,6 +409,10 @@ An ad-hoc signed sandboxed build succeeds with the approved app-scoped bookmark 
 The first production integration run opened all three applications, but revealed that `FileManager.homeDirectoryForCurrentUser` resolves to the application container while WorkBench is sandboxed. As a result, `~/` initially expanded to `~/Library/Containers/com.example.WorkBench/Data`. Path expansion now reads the login account home from the POSIX password database and falls back to Foundation's named-user lookup. Terminal and Finder therefore resolve `~/` to the actual user home while configuration storage remains sandbox-scoped.
 
 The Terminal adapter initially activated Terminal before sending its `do script` command. During manual verification, a newly created Terminal session appeared to receive the home-directory `cd` twice. The adapter now creates the scripted session before activating Terminal, and automated coverage verifies that ordering. A signed-build retest initially showed a single `cd`, but a later repeated Project launch displayed it twice again. The final directory remained correct, so this was a cosmetic limitation rather than a launch failure and motivated the home-directory special case below.
+
+The home-directory special case has sufficiently resolved the duplicate-`cd`
+behavior for the MVP; any intermittent cosmetic display is accepted and does
+not require further work in the current scope.
 
 Home-relative Terminal sessions stored as `~` or `~/` now create a normal empty
 Terminal session without injecting `cd`. This avoids Terminal's intermittent
