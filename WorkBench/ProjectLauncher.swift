@@ -244,18 +244,124 @@ struct FoundationApplicationLauncher: ApplicationLaunching {
 }
 
 @MainActor
+struct ResourceLaunchAdapter {
+    let resourceType: String
+    private let bundleIdentifierProvider: (ResourcePayload) -> String?
+    private let launchOperation: (ResourcePayload) async -> ResourceLaunchOutcome
+
+    init(
+        resourceType: String,
+        bundleIdentifier: @escaping (ResourcePayload) -> String?,
+        launch: @escaping (ResourcePayload) async -> ResourceLaunchOutcome
+    ) {
+        self.resourceType = resourceType
+        bundleIdentifierProvider = bundleIdentifier
+        launchOperation = launch
+    }
+
+    func bundleIdentifier(for payload: ResourcePayload) -> String? {
+        bundleIdentifierProvider(payload)
+    }
+
+    func launch(_ payload: ResourcePayload) async -> ResourceLaunchOutcome {
+        await launchOperation(payload)
+    }
+}
+
+@MainActor
+struct ResourceLaunchAdapterRegistry {
+    private let adaptersByType: [String: ResourceLaunchAdapter]
+
+    init(adapters: [ResourceLaunchAdapter]) {
+        var indexed: [String: ResourceLaunchAdapter] = [:]
+        for adapter in adapters {
+            precondition(
+                indexed[adapter.resourceType] == nil,
+                "Duplicate Resource launch adapter for \(adapter.resourceType)."
+            )
+            indexed[adapter.resourceType] = adapter
+        }
+        adaptersByType = indexed
+    }
+
+    func adapter(for resourceType: String) -> ResourceLaunchAdapter? {
+        adaptersByType[resourceType]
+    }
+
+    static func standard(
+        browserLauncher: any BrowserLaunching,
+        chromeLauncher: any BrowserLaunching,
+        terminalLauncher: any TerminalLaunching,
+        finderLauncher: any FinderLaunching,
+        applicationLauncher: any ApplicationLaunching
+    ) -> ResourceLaunchAdapterRegistry {
+        ResourceLaunchAdapterRegistry(adapters: [
+            ResourceLaunchAdapter(
+                resourceType: "browser-window",
+                bundleIdentifier: { _ in "com.apple.Safari" },
+                launch: { payload in
+                    guard case let .browserWindow(browser) = payload else {
+                        return incompatiblePayload(for: "browser-window")
+                    }
+                    return outcome(for: browserLauncher.open(browser))
+                }
+            ),
+            ResourceLaunchAdapter(
+                resourceType: "chrome-window",
+                bundleIdentifier: { _ in "com.google.Chrome" },
+                launch: { payload in
+                    guard case let .chromeWindow(browser) = payload else {
+                        return incompatiblePayload(for: "chrome-window")
+                    }
+                    return outcome(for: chromeLauncher.open(browser))
+                }
+            ),
+            ResourceLaunchAdapter(
+                resourceType: "terminal-session",
+                bundleIdentifier: { _ in "com.apple.Terminal" },
+                launch: { payload in
+                    guard case let .terminalSession(terminal) = payload else {
+                        return incompatiblePayload(for: "terminal-session")
+                    }
+                    return outcome(for: terminalLauncher.open(terminal))
+                }
+            ),
+            ResourceLaunchAdapter(
+                resourceType: "finder-window",
+                bundleIdentifier: { _ in "com.apple.finder" },
+                launch: { payload in
+                    guard case let .finderWindow(finder) = payload else {
+                        return incompatiblePayload(for: "finder-window")
+                    }
+                    return outcome(for: finderLauncher.open(finder))
+                }
+            ),
+            ResourceLaunchAdapter(
+                resourceType: "application",
+                bundleIdentifier: { payload in
+                    guard case let .application(application) = payload else { return nil }
+                    return application.bundleIdentifier
+                },
+                launch: { payload in
+                    guard case let .application(application) = payload else {
+                        return incompatiblePayload(for: "application")
+                    }
+                    return outcome(for: await applicationLauncher.open(application))
+                }
+            )
+        ])
+    }
+}
+
+@MainActor
 final class ProjectLauncher {
-    private let browserLauncher: any BrowserLaunching
-    private let chromeLauncher: any BrowserLaunching
-    private let terminalLauncher: any TerminalLaunching
-    private let finderLauncher: any FinderLaunching
-    private let applicationLauncher: any ApplicationLaunching
+    private let adapterRegistry: ResourceLaunchAdapterRegistry
     private let aeroSpaceWindowController: any AeroSpaceWindowControlling
     private let aeroSpaceWorkspaceController: any AeroSpaceControlling
     private let windowDetectionAttempts: Int
     private let windowDetectionInterval: Duration
 
-    init(
+    convenience init(
         browserLauncher: any BrowserLaunching = SafariLauncher(),
         chromeLauncher: any BrowserLaunching = ChromeLauncher(),
         terminalLauncher: any TerminalLaunching = TerminalLauncher(),
@@ -266,11 +372,29 @@ final class ProjectLauncher {
         windowDetectionAttempts: Int = 20,
         windowDetectionInterval: Duration = .milliseconds(50)
     ) {
-        self.browserLauncher = browserLauncher
-        self.chromeLauncher = chromeLauncher
-        self.terminalLauncher = terminalLauncher
-        self.finderLauncher = finderLauncher
-        self.applicationLauncher = applicationLauncher
+        self.init(
+            adapterRegistry: .standard(
+                browserLauncher: browserLauncher,
+                chromeLauncher: chromeLauncher,
+                terminalLauncher: terminalLauncher,
+                finderLauncher: finderLauncher,
+                applicationLauncher: applicationLauncher
+            ),
+            aeroSpaceWindowController: aeroSpaceWindowController,
+            aeroSpaceWorkspaceController: aeroSpaceWorkspaceController,
+            windowDetectionAttempts: windowDetectionAttempts,
+            windowDetectionInterval: windowDetectionInterval
+        )
+    }
+
+    init(
+        adapterRegistry: ResourceLaunchAdapterRegistry,
+        aeroSpaceWindowController: any AeroSpaceWindowControlling = AeroSpaceClient(),
+        aeroSpaceWorkspaceController: any AeroSpaceControlling = AeroSpaceClient(),
+        windowDetectionAttempts: Int = 20,
+        windowDetectionInterval: Duration = .milliseconds(50)
+    ) {
+        self.adapterRegistry = adapterRegistry
         self.aeroSpaceWindowController = aeroSpaceWindowController
         self.aeroSpaceWorkspaceController = aeroSpaceWorkspaceController
         self.windowDetectionAttempts = max(1, windowDetectionAttempts)
@@ -315,9 +439,12 @@ final class ProjectLauncher {
         _ resource: Resource,
         placementWorkspace: String?
     ) async -> ResourceLaunchOutcome {
-        guard let placementWorkspace else { return await launchUnplaced(resource) }
-        guard let bundleIdentifier = applicationBundleIdentifier(for: resource) else {
-            return await launchUnplaced(resource)
+        guard let adapter = adapterRegistry.adapter(for: resource.type) else {
+            return .skipped("Resource type \"\(resource.type)\" is unsupported.")
+        }
+        guard let placementWorkspace else { return await adapter.launch(resource.payload) }
+        guard let bundleIdentifier = adapter.bundleIdentifier(for: resource.payload) else {
+            return .failed("WorkBench could not identify the application for this Resource.")
         }
 
         let beforeResult = await aeroSpaceWindowController
@@ -327,7 +454,7 @@ final class ProjectLauncher {
             return .failed("WorkBench could not prepare window placement: \(error.recoveryMessage)")
         }
 
-        let launchOutcome = await launchUnplaced(resource)
+        let launchOutcome = await adapter.launch(resource.payload)
         guard launchOutcome == .succeeded else { return launchOutcome }
 
         switch await detectCreatedWindow(
@@ -382,23 +509,6 @@ final class ProjectLauncher {
         }
     }
 
-    private func launchUnplaced(_ resource: Resource) async -> ResourceLaunchOutcome {
-        switch resource.payload {
-        case let .browserWindow(browser):
-            launchOutcome(for: browserLauncher.open(browser))
-        case let .chromeWindow(browser):
-            launchOutcome(for: chromeLauncher.open(browser))
-        case let .terminalSession(terminal):
-            launchOutcome(for: terminalLauncher.open(terminal))
-        case let .finderWindow(finder):
-            launchOutcome(for: finderLauncher.open(finder))
-        case let .application(application):
-            launchOutcome(for: await applicationLauncher.open(application))
-        case let .unsupported(type, _):
-            .skipped("Resource type \"\(type)\" is unsupported.")
-        }
-    }
-
     private func detectCreatedWindow(
         bundleIdentifier: String,
         previousIDs: Set<Int>
@@ -434,20 +544,14 @@ final class ProjectLauncher {
         )
     }
 
-    private func applicationBundleIdentifier(for resource: Resource) -> String? {
-        switch resource.payload {
-        case .browserWindow: "com.apple.Safari"
-        case .chromeWindow: "com.google.Chrome"
-        case .terminalSession: "com.apple.Terminal"
-        case .finderWindow: "com.apple.finder"
-        case let .application(application): application.bundleIdentifier
-        case .unsupported: nil
-        }
-    }
+}
 
-    private func launchOutcome(for errorMessage: String?) -> ResourceLaunchOutcome {
-        errorMessage.map(ResourceLaunchOutcome.failed) ?? .succeeded
-    }
+private func outcome(for errorMessage: String?) -> ResourceLaunchOutcome {
+    errorMessage.map(ResourceLaunchOutcome.failed) ?? .succeeded
+}
+
+private func incompatiblePayload(for resourceType: String) -> ResourceLaunchOutcome {
+    .failed("The \"\(resourceType)\" Resource payload is incompatible with its launch adapter.")
 }
 
 private struct WindowDetectionError: Error {

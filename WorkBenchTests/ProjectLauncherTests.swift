@@ -4,6 +4,60 @@ import XCTest
 
 @MainActor
 final class ProjectLauncherTests: XCTestCase {
+    func testStandardRegistryProvidesBundleIdentityForEverySupportedType() {
+        let recorder = InvocationRecorder()
+        let registry = ResourceLaunchAdapterRegistry.standard(
+            browserLauncher: BrowserLauncherStub(recorder: recorder),
+            chromeLauncher: ChromeLauncherStub(recorder: recorder),
+            terminalLauncher: TerminalLauncherStub(recorder: recorder),
+            finderLauncher: FinderLauncherStub(recorder: recorder),
+            applicationLauncher: ApplicationLauncherStub(recorder: recorder)
+        )
+        let resources = [
+            Resource(name: "Safari", payload: .browserWindow(.init(tabs: ["https://example.com"]))),
+            Resource(name: "Chrome", payload: .chromeWindow(.init(tabs: ["https://example.com"]))),
+            Resource(name: "Terminal", payload: .terminalSession(.init(workingDirectory: "~/"))),
+            Resource(name: "Finder", payload: .finderWindow(.init(folder: "~/"))),
+            Resource(
+                name: "Editor",
+                payload: .application(.init(
+                    bundleIdentifier: "com.example.Editor",
+                    lastKnownPath: "/Applications/Editor.app"
+                ))
+            )
+        ]
+
+        XCTAssertEqual(
+            resources.map { resource in
+                registry.adapter(for: resource.type)?.bundleIdentifier(for: resource.payload)
+            },
+            [
+                "com.apple.Safari",
+                "com.google.Chrome",
+                "com.apple.Terminal",
+                "com.apple.finder",
+                "com.example.Editor"
+            ]
+        )
+    }
+
+    func testRegistryControlsDispatchWithoutSwitchFallback() async {
+        let launcher = ProjectLauncher(
+            adapterRegistry: ResourceLaunchAdapterRegistry(adapters: [])
+        )
+        let resource = Resource(
+            name: "Safari",
+            payload: .browserWindow(.init(tabs: ["https://example.com"]))
+        )
+
+        let report = await launcher.open(Project(name: "No Adapters", resources: [resource]))
+
+        XCTAssertEqual(
+            report.results.map(\.outcome),
+            [.skipped("Resource type \"browser-window\" is unsupported.")]
+        )
+    }
+
     func testResourcesLaunchSequentiallyAndContinueAfterFailure() async {
         let recorder = InvocationRecorder()
         let launcher = ProjectLauncher(
@@ -77,6 +131,25 @@ final class ProjectLauncherTests: XCTestCase {
         let report = await launcher.open(project)
 
         XCTAssertEqual(recorder.applications, ["com.apple.iMovie"])
+        XCTAssertEqual(report.results.map(\.outcome), [.succeeded])
+    }
+
+    func testGenericSafariApplicationDoesNotUseEnhancedSafariAdapter() async {
+        let recorder = InvocationRecorder()
+        let launcher = ProjectLauncher(
+            browserLauncher: BrowserLauncherStub(recorder: recorder),
+            applicationLauncher: ApplicationLauncherStub(recorder: recorder)
+        )
+        let application = ApplicationResource(
+            bundleIdentifier: "com.apple.Safari",
+            lastKnownPath: "/Applications/Safari.app"
+        )
+
+        let report = await launcher.open(Project(name: "Generic Safari", resources: [
+            Resource(name: "Safari", payload: .application(application))
+        ]))
+
+        XCTAssertEqual(recorder.applications, ["com.apple.Safari"])
         XCTAssertEqual(report.results.map(\.outcome), [.succeeded])
     }
 

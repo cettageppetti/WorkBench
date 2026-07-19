@@ -237,6 +237,11 @@ Project in Safari, Terminal, and Finder, including creating another window in
 each application when opened repeatedly. Generic Application Resource signed
 integration and denied-permission recovery remain manual verification items.
 
+Launch dispatch and AeroSpace application identity are centralized in a
+compiled adapter registry keyed by stable Resource type. This preserves the
+difference between generic and enhanced behavior while providing a single
+execution extension point for later compiled adapters.
+
 ### Outcomes
 
 - Implement the sequential Project launcher and structured LaunchReport.

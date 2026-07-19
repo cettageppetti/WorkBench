@@ -45,6 +45,14 @@ uses the stored bundle identifier and moves only one unambiguous new window.
 Zero or multiple new windows are reported and existing windows remain untouched.
 Safari, Chrome, Terminal, and Finder retain their enhanced compiled adapters.
 
+`ResourceLaunchAdapterRegistry` now centralizes launch dispatch and AeroSpace
+bundle identity by stable Resource type. The standard registry composes the
+existing injectable launch protocols, so production and test adapters retain
+their prior boundaries. Generic Application Resources remain generic even when
+their bundle identifier belongs to an enhanced application such as Safari.
+Missing registry entries use the existing unsupported-Resource report rather
+than falling through to a parallel switch in `ProjectLauncher`.
+
 A signed real-world acceptance pass selected `/Applications/iMovie.app`, saved
 its `com.apple.iMovie` bundle identity, and opened the Project with AeroSpace
 workspace `8` selected. iMovie activated successfully, its newly created window
@@ -179,7 +187,7 @@ failure, and unknown destination types launch no Resources and retain the
 attempted Project snapshot for explicit **Open Without Placement** or **Cancel**
 recovery. The Open command is disabled while activation is in progress. UI-test
 doubles never contact AeroSpace or move the active workspace. After the Settings
-and editor increment, the complete signed scheme passes all 86 unit tests and
+and editor increment, the complete signed scheme passes all 89 unit tests and
 all 16 UI tests.
 
 ## AeroSpace Settings and Project editor

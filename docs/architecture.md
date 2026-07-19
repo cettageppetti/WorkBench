@@ -123,9 +123,18 @@ and test doubles return deterministic outcomes.
 
 Generic Application Resources provide baseline coverage without making
 application-specific window guarantees. Safari, Chrome, Terminal, and Finder
-remain enhanced compiled Resources. A later adapter registry may associate
-additional bundle identifiers with enhanced strategies, but Projects never
-store scripts or executable commands.
+remain enhanced compiled Resources. Future compiled adapters may add enhanced
+Resource types, but Projects never store scripts or executable commands.
+
+`ResourceLaunchAdapterRegistry` is the compiled execution boundary. It is
+indexed by stable Resource type because a bundle identifier alone cannot
+distinguish generic application launch from enhanced behavior for the same
+application. Each adapter supplies payload-compatible launch behavior and the
+bundle identifier used for AeroSpace correlation. `ProjectLauncher` contains no
+parallel Resource-type switch; an unregistered type is skipped and reported.
+The default registry contains Safari, Chrome, Terminal, Finder, and generic
+application adapters. A separate future capability catalog may map installed
+bundle identifiers to enhanced Resource choices in the editor.
 
 Apple Events and scripting details belong inside the adapters. The architecture does not expose scripts as part of the Project model because Projects describe desired state, not implementation steps.
 
