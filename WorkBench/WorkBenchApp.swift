@@ -63,8 +63,9 @@ struct WorkBenchApp: App {
                     .disabled(model.workflow?.draft == nil || model.isOpeningProject)
                 Button("Save", action: model.save)
                     .keyboardShortcut("s", modifiers: .command)
-                Button("Reload Configurations", action: model.reload)
+                Button("Reload Projects", action: model.reload)
                     .keyboardShortcut("r", modifiers: [.command, .shift])
+                Button("Reveal Project Library", action: model.revealProjectLibrary)
             }
         }
         Settings {

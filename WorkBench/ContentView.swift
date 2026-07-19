@@ -9,8 +9,10 @@ struct ContentView: View {
             switch model.directoryAccess.status {
             case .unresolved:
                 ProgressView("Preparing WorkBench…")
-            case let .needsSelection(message):
-                folderSelection(message: message)
+            case let .migrationAvailable(legacyDirectory):
+                migrationAvailable(legacyDirectory: legacyDirectory)
+            case let .failed(message):
+                projectLibraryFailure(message: message)
             case .ready:
                 if let workflow = model.workflow {
                     editor(workflow: workflow)
@@ -23,9 +25,6 @@ struct ContentView: View {
         .background(WindowDelegateInstaller(delegate: model))
         .task {
             model.start()
-            if model.shouldOfferInitialFolderSelection() {
-                chooseConfigurationDirectory()
-            }
         }
         .confirmationDialog(
             "Save changes before continuing?",
@@ -49,7 +48,7 @@ struct ContentView: View {
             Button("Delete", role: .destructive, action: model.deleteConfirmedProject)
             Button("Cancel", role: .cancel) { model.projectPendingDeletion = nil }
         } message: { project in
-            Text("\"\(project.name)\" and its JSON configuration file will be deleted.")
+            Text("\"\(project.name)\" will be deleted from the WorkBench Project library.")
         }
         .alert(
             "WorkBench Error",
@@ -82,13 +81,32 @@ struct ContentView: View {
         }
     }
 
-    private func folderSelection(message: String?) -> some View {
+    private func migrationAvailable(legacyDirectory: URL) -> some View {
         ContentUnavailableView {
-            Label("Choose Configuration Folder", systemImage: "folder.badge.plus")
+            Label("Import Existing Projects", systemImage: "tray.and.arrow.down")
         } description: {
-            Text(message ?? "WorkBench needs access to ~/Documents/WorkBench to store Project configurations.")
+            Text(
+                "WorkBench now manages Projects in Application Support. Import JSON Projects from "
+                    + legacyDirectory.path(percentEncoded: false)
+                    + ". The original folder will not be changed or deleted."
+            )
         } actions: {
-            Button("Choose WorkBench Folder…", action: chooseConfigurationDirectory)
+            Button("Import Existing Projects", action: model.migrateLegacyProjects)
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("import-existing-projects-button")
+            Button("Start With Empty Library", action: model.startWithEmptyProjectLibrary)
+                .accessibilityIdentifier("start-empty-library-button")
+        }
+    }
+
+    private func projectLibraryFailure(message: String) -> some View {
+        ContentUnavailableView {
+            Label("Couldn’t Prepare Project Library", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Try Again", action: model.retryProjectLibraryPreparation)
+                .accessibilityIdentifier("retry-project-library-button")
         }
     }
 
@@ -101,7 +119,7 @@ struct ContentView: View {
                     }
                 }
                 if !workflow.issues.isEmpty {
-                    Section("Configuration Issues") {
+                    Section("Project Data Issues") {
                         ForEach(workflow.issues) { issue in
                             Label {
                                 VStack(alignment: .leading) {
@@ -449,19 +467,6 @@ struct ContentView: View {
         if case .unsupported = payload { true } else { false }
     }
 
-    private func chooseConfigurationDirectory() {
-        let panel = NSOpenPanel()
-        panel.title = "Choose the WorkBench Configuration Folder"
-        panel.message = "Create or select the WorkBench folder in Documents. WorkBench will remember your choice."
-        panel.prompt = "Choose"
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        panel.directoryURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        model.selectDirectory(url)
-    }
 }
 
 private enum LaunchDestinationKind: Hashable {

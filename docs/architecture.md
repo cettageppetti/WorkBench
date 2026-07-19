@@ -2,7 +2,7 @@
 
 ## Architecture goals
 
-The MVP architecture should make the Project–Resource model explicit, keep macOS integrations replaceable and testable, and preserve human-editable configuration data safely. It should not build a plugin framework or generalized orchestration engine before the MVP validates the product.
+The MVP architecture should make the Project–Resource model explicit, keep macOS integrations replaceable and testable, and preserve application-managed Project data safely. It should not build a plugin framework or generalized orchestration engine before the MVP validates the product.
 
 The intended structure is a small native SwiftUI application with a domain layer, JSON persistence, and isolated application launch adapters.
 
@@ -13,7 +13,7 @@ The intended structure is a small native SwiftUI application with a domain layer
 - Swift strict concurrency should be enabled from the beginning.
 - No third-party dependencies.
 - App Sandbox disabled; Hardened Runtime remains enabled.
-- Project files stored in a user-selected `~/Documents/WorkBench` folder remembered with a standard macOS bookmark.
+- Project files stored under `~/Library/Application Support/WorkBench/Projects`.
 - Apple Events/Automation used where exact Safari, Terminal, or Finder window behavior requires it.
 - JSON encoded and decoded with Foundation `Codable` facilities where compatible with lossless unknown-Resource preservation.
 
@@ -24,7 +24,7 @@ User
   |
   v
 WorkBench SwiftUI application
-  |-- reads/writes --> ~/Documents/WorkBench/*.json
+  |-- reads/writes --> ~/Library/Application Support/WorkBench/Projects/*.json
   |-- automates ----> Safari
   |-- automates ----> Terminal.app
   `-- opens/automates -> Finder
@@ -47,7 +47,7 @@ Use small workflow types or methods for user actions such as:
 - bootstrap Projects;
 - select a Project;
 - save or discard a draft;
-- reload configurations;
+- reload Projects;
 - create, duplicate, rename, and delete Projects;
 - mutate and reorder Resources; and
 - open a Project.
@@ -89,10 +89,10 @@ The repository should return both valid Projects and file-level load failures so
 
 Writes should be atomic: encode to a temporary sibling file and replace the destination through a Foundation API that provides atomic behavior. A failed write must leave the last saved configuration usable.
 
-The application loads configurations:
+The application loads Projects:
 
 - during startup; and
-- after the **Reload Configurations** command resolves any dirty draft.
+- after the **Reload Projects** command resolves any dirty draft.
 
 Live filesystem observation is out of scope.
 
@@ -282,7 +282,7 @@ Before the main UI is built out, a technical spike should verify:
 - Finder can reliably open the required folder in a window; and
 - denied or revoked Automation access produces actionable errors.
 
-The filesystem spike originally confirmed that App Sandbox has no fixed Documents-folder entitlement. The current unsandboxed first-run flow still uses a standard folder-selection panel for an explicit, understandable configuration choice and persists a normal bookmark. Missing, stale, or inaccessible bookmarks return the app to folder selection without replacing configurations.
+Production storage uses Foundation's user-domain Application Support location and requires no folder-selection panel or active bookmark. The former bookmark is read only to offer a one-time, copy-based migration. Migration stages JSON files before installing the managed library, never overwrites a nonempty destination, and leaves the legacy source untouched.
 
 ## Concurrency
 
@@ -294,7 +294,7 @@ Project launching is deliberately sequential even though its API is asynchronous
 
 Errors should be structured for both testing and user presentation. Major categories are:
 
-- configuration discovery, read, decode, validation, write, and delete failures;
+- Project-library discovery, migration, read, decode, validation, write, and delete failures;
 - duplicate names or identifiers;
 - unsupported schema versions or Resource types;
 - inaccessible or nonexistent paths;
@@ -321,7 +321,7 @@ Low-level errors may be retained for diagnostics, but the UI should display a co
 
 ### Repository integration tests
 
-Use temporary directories to test discovery, atomic saving, deletion, malformed files, duplicate configurations, and reload behavior without touching the user's Documents directory.
+Use temporary directories to test discovery, migration, atomic saving, deletion, malformed files, duplicate Projects, and reload behavior without touching the user's Application Support directory.
 
 ### UI tests
 

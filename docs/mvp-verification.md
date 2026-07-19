@@ -21,8 +21,9 @@ The hosted `WorkBenchTests` target covers:
   unsupported Resource preservation;
 - draft dirty state, explicit save, Save/Discard/Cancel behavior, creation,
   duplication, deletion failure, Resource mutation, and persisted ordering;
-- folder selection, bookmark restoration, and missing or stale bookmark
-  recovery decisions;
+- Application Support path creation, legacy bookmark discovery, staged
+  copy-based migration, source preservation, clean-start behavior, and
+  destination overwrite prevention;
 - machine-local AeroSpace integration enablement, including its disabled
   default and persistence independently of Project JSON;
 - typed AeroSpace workspace discovery and activation arguments, command
@@ -41,7 +42,7 @@ The hosted `WorkBenchTests` target covers:
 - application-model coordination for creation, Resource commands, unsaved
   selection changes, and consolidated invalid-launch reports.
 
-The signed `xcodebuild test` command passes all 81 unit tests and all sixteen
+The signed `xcodebuild test` command passes all 82 unit tests and all sixteen
 macOS UI tests. The build emits the expected metadata-extraction warning because
 WorkBench does not link App Intents. Xcode may also report debugger-version
 store noise or fail to collect a post-test OS log archive because
@@ -72,17 +73,14 @@ A window-close test verifies that the native unsaved-changes alert can cancel
 the close or complete it after discarding or saving the draft.
 A quit-command test verifies that the same choices either cancel termination or
 allow the application process to exit after discarding or saving the draft.
-A configuration-directory recovery test verifies the first-launch presentation,
-recovery guidance, enabled chooser action, and hidden Projects editor.
+A legacy-migration presentation test verifies the import and start-empty choices
+and keeps the Projects editor hidden until the user resolves migration.
 
 ## Manually verified
 
-- The earlier signed sandboxed build restored access to a selected
-  `~/Documents/WorkBench` directory through an app-scoped bookmark.
-- The earlier isolated signed sandboxed build presented folder selection when its bookmark
-  is missing, restores a selected temporary folder after relaunch, returns to
-  folder selection with write-failure guidance when access is denied, and shows
-  expired-access guidance when macOS marks the bookmark stale.
+- Earlier bookmark and selected-folder results apply only to migration
+  compatibility. Production now uses an application-managed Project library in
+  the user-domain Application Support directory.
 - An isolated signed build loads a valid hand edit, keeps malformed JSON visible
   as a file-specific issue, identifies an unsupported Resource, and preserves
   that Resource's extra boolean and nested JSON fields across GUI save/reload.
@@ -127,7 +125,7 @@ three-tab window in `6`.
 
 ## Verification still required
 
-The signed unsandboxed suite passes all 81 unit tests and all 16 UI tests. Save
+The signed unsandboxed suite passes all 82 unit tests and all 16 UI tests. Save
 and Open verification uses stable File commands rather than assuming macOS has
 kept trailing toolbar controls outside its overflow menu. The standalone signed
 app build succeeds and contains no App Sandbox entitlement.
@@ -140,6 +138,12 @@ Adding controlled launch behavior for UI tests must not become a production
 back door or weaken the Automation boundary.
 
 ### Manual acceptance and permissions
+
+Managed Project storage migration has passed signed local acceptance. Two
+legacy JSON files were copied from `~/Documents/WorkBench` to the Application
+Support Project library, verified byte-for-byte, and left intact at the source.
+The Projects loaded after import and again after a full quit and relaunch, with
+no repeated migration prompt.
 
 - Exercise Automation permission denial and revocation independently for
   Safari, Terminal, and Finder. Chrome denial, later-Resource continuation,

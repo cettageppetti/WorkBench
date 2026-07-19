@@ -1,12 +1,20 @@
-# WorkBench Configuration Guide
+# WorkBench Project Data Guide
 
-WorkBench stores each Project as a human-readable JSON file in the configuration directory selected on first launch. For the MVP, select `~/Documents/WorkBench`. The app remembers that directory with a standard macOS bookmark.
+WorkBench manages Project data under:
 
-## Editing safely
+```text
+~/Library/Application Support/WorkBench/Projects
+```
 
-Quit WorkBench before editing a Project file by hand, or save/discard any GUI edits first. WorkBench reads external changes at launch and when **WorkBench > Reload Configurations** is chosen; it does not watch files continuously. Reloading while the current Project has unsaved GUI edits presents the normal Save/Discard/Cancel prompt.
+Use the WorkBench editor to create and change Projects. The JSON files in this directory are an internal, versioned persistence format; direct editing is unsupported. **Reload Projects** reloads the managed library after the normal Save/Discard/Cancel decision for an unsaved draft. **Reveal Project Library** opens the managed location for backup and support.
 
-Use a JSON-aware editor and keep the file as valid UTF-8 JSON. WorkBench writes formatted JSON with sorted keys when it saves. Invalid files remain visible in the interface with a file-specific error instead of being silently ignored.
+## Migrating the former Project folder
+
+When the managed library is empty and WorkBench can resolve the former selected folder, it offers **Import Existing Projects** or **Start With Empty Library**. Import copies JSON files through a staging directory. It does not modify or delete the source and refuses to overwrite a nonempty managed library. Starting empty also leaves the former folder untouched.
+
+## Internal schema compatibility
+
+WorkBench continues to write formatted JSON with sorted keys and retains schema compatibility so upgrades can migrate existing Projects safely. The details below document compatibility and troubleshooting, not a supported editing interface.
 
 Each filename must be the Project's lowercase UUID followed by `.json`. For example, a Project whose `id` is `3B06EC67-9A7C-4D66-ACF4-3F869F195C1F` must be stored as:
 
@@ -68,7 +76,7 @@ Project fields:
 The supported launch destination has `type` set to `aerospace-workspace` and a
 nonempty `workspace` string. Workspace names are case-sensitive and are passed
 to AeroSpace exactly as stored. The Project editor trims surrounding whitespace
-from user-entered names, while hand-edited names containing only whitespace are
+from user-entered names, while stored names containing only whitespace are
 invalid.
 
 An otherwise valid destination with an unknown `type` is preserved without data
@@ -120,13 +128,6 @@ Resource failure and moves nothing if it cannot identify exactly one new
 window. It continues with later Resources and attempts to restore focus to the
 Project workspace.
 
-## Resolving errors
+## Resolving Project-data errors
 
-When a file is reported as invalid:
-
-1. Read the file-specific message in WorkBench.
-2. Correct the JSON, required fields, UUIDs, filename, or validation issue in an editor.
-3. Save the file.
-4. Choose **WorkBench > Reload Configurations** or relaunch WorkBench.
-
-WorkBench does not rewrite an invalid file automatically.
+Use **Reveal Project Library** when support or backup access is needed. WorkBench does not silently rewrite an invalid file. Preserve a copy before attempting manual recovery, then use **Reload Projects** or relaunch WorkBench.

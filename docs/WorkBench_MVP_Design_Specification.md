@@ -149,15 +149,15 @@ WorkBench coordinates native applications.
 
 It does not replace them.
 
-## Human-readable configuration
+## Application-managed Project data
 
-Projects should be stored in a human-readable format.
+Projects should be stored durably in the user's standard Application Support directory.
 
-Prefer YAML or JSON over binary databases.
+The GUI is the supported editing interface. Direct file editing is not a product feature.
 
-The GUI edits the model.
+JSON may remain the internal persistence format while it remains simple, versioned, and migration-friendly.
 
-Configuration files are the persistence layer.
+WorkBench owns Project-file naming, validation, migration, and persistence.
 
 ## Simplicity wins
 

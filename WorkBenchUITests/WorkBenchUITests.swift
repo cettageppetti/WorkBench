@@ -2,29 +2,25 @@ import XCTest
 
 final class WorkBenchUITests: XCTestCase {
     @MainActor
-    private func launchApp(needsConfigurationDirectory: Bool = false) -> XCUIApplication {
+    private func launchApp(needsMigration: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["--workbench-ui-testing", "-workbenchUITesting", "YES"]
         app.launchEnvironment["WORKBENCH_UI_TESTING"] = "1"
-        if needsConfigurationDirectory {
-            app.launchEnvironment["WORKBENCH_UI_TEST_NEEDS_DIRECTORY"] = "1"
+        if needsMigration {
+            app.launchEnvironment["WORKBENCH_UI_TEST_NEEDS_MIGRATION"] = "1"
         }
         app.launch()
         return app
     }
 
     @MainActor
-    func testConfigurationDirectoryRecoveryIsPresented() {
+    func testLegacyProjectMigrationIsPresented() {
         continueAfterFailure = false
-        let app = launchApp(needsConfigurationDirectory: true)
+        let app = launchApp(needsMigration: true)
 
-        XCTAssertTrue(app.staticTexts["Choose Configuration Folder"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts[
-            "Access to the WorkBench folder has expired. Select it again."
-        ].exists)
-        let chooseButton = app.buttons["Choose WorkBench Folder…"]
-        XCTAssertTrue(chooseButton.exists)
-        XCTAssertTrue(chooseButton.isEnabled)
+        XCTAssertTrue(app.staticTexts["Import Existing Projects"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["import-existing-projects-button"].isEnabled)
+        XCTAssertTrue(app.buttons["start-empty-library-button"].isEnabled)
         XCTAssertFalse(app.outlines["projects-list"].exists)
     }
 
@@ -277,7 +273,9 @@ final class WorkBenchUITests: XCTestCase {
         var alert = app.sheets.firstMatch
         XCTAssertTrue(alert.waitForExistence(timeout: 2))
         XCTAssertTrue(alert.staticTexts["Delete Project?"].exists)
-        XCTAssertTrue(alert.staticTexts["\"Second Project\" and its JSON configuration file will be deleted."].exists)
+        XCTAssertTrue(alert.staticTexts[
+            "\"Second Project\" will be deleted from the WorkBench Project library."
+        ].exists)
         alert.buttons["Cancel"].click()
         XCTAssertFalse(alert.waitForExistence(timeout: 1))
         XCTAssertTrue(secondProject.exists)

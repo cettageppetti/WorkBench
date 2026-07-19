@@ -42,7 +42,6 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
     private(set) var aeroSpaceWorkspaceDiscoveryError: String?
     private(set) var isDiscoveringAeroSpaceWorkspaces = false
 
-    @ObservationIgnored private var attemptedInitialSelection = false
     @ObservationIgnored private let launcher: ProjectLauncher
     @ObservationIgnored private let aeroSpaceController: any AeroSpaceControlling
     @ObservationIgnored private let aeroSpaceSettingsStore: any AeroSpaceIntegrationSettingsStoring
@@ -64,24 +63,31 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
 
     func start() {
         guard workflow == nil else { return }
-        directoryAccess.restoreAccess()
+        directoryAccess.prepare()
         if case .ready = directoryAccess.status {
             loadRepository()
         }
     }
 
-    func selectDirectory(_ url: URL) {
-        directoryAccess.selectDirectory(url)
+    func migrateLegacyProjects() {
+        directoryAccess.migrateLegacyProjects()
         if case .ready = directoryAccess.status {
             loadRepository()
         }
     }
 
-    func shouldOfferInitialFolderSelection() -> Bool {
-        guard !attemptedInitialSelection,
-              case .needsSelection(message: nil) = directoryAccess.status else { return false }
-        attemptedInitialSelection = true
-        return true
+    func startWithEmptyProjectLibrary() {
+        directoryAccess.startWithEmptyLibrary()
+        if case .ready = directoryAccess.status {
+            loadRepository()
+        }
+    }
+
+    func retryProjectLibraryPreparation() {
+        directoryAccess.prepare()
+        if case .ready = directoryAccess.status {
+            loadRepository()
+        }
     }
 
     func selectProject(_ id: ProjectID?) {
@@ -99,6 +105,11 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
 
     func reload() {
         request(.reload)
+    }
+
+    func revealProjectLibrary() {
+        guard case let .ready(url) = directoryAccess.status else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     func openSelectedProject() async {

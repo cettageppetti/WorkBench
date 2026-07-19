@@ -3,26 +3,25 @@ import Observation
 
 enum ConfigurationDirectoryAccessError: LocalizedError, Equatable {
     case unresolved
-    case notWorkBenchFolder
     case notDirectory
-    case bookmarkIsStale
+    case legacyBookmarkIsStale
+    case migrationDestinationNotEmpty
     case accessDenied
 
     var errorDescription: String? {
         switch self {
         case .unresolved:
-            "Choose the WorkBench configuration folder first."
-        case .notWorkBenchFolder:
-            "Select a folder named WorkBench."
+            "WorkBench has not finished preparing its Project library."
         case .notDirectory:
-            "The selected location is not a folder."
-        case .bookmarkIsStale:
-            "Access to the WorkBench folder has expired. Select it again."
+            "The WorkBench Project library location is not a folder."
+        case .legacyBookmarkIsStale:
+            "The previous WorkBench configuration folder is no longer available."
+        case .migrationDestinationNotEmpty:
+            "The new WorkBench Project library already contains files, so migration was not attempted."
         case .accessDenied:
-            "WorkBench could not access the selected folder."
+            "WorkBench could not read or write its Project library."
         }
     }
-
 }
 
 protocol BookmarkDataStoring {
@@ -43,17 +42,9 @@ struct UserDefaultsBookmarkDataStore: BookmarkDataStoring {
         self.key = key
     }
 
-    func load() -> Data? {
-        defaults.data(forKey: key)
-    }
-
-    func save(_ data: Data) {
-        defaults.set(data, forKey: key)
-    }
-
-    func remove() {
-        defaults.removeObject(forKey: key)
-    }
+    func load() -> Data? { defaults.data(forKey: key) }
+    func save(_ data: Data) { defaults.set(data, forKey: key) }
+    func remove() { defaults.removeObject(forKey: key) }
 }
 
 protocol DirectoryBookmarking {
@@ -63,11 +54,7 @@ protocol DirectoryBookmarking {
 
 struct FoundationDirectoryBookmarker: DirectoryBookmarking {
     func createBookmark(for url: URL) throws -> Data {
-        try url.bookmarkData(
-            options: [],
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        )
+        try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
     }
 
     func resolveBookmark(_ data: Data) throws -> (url: URL, isStale: Bool) {
@@ -82,29 +69,66 @@ struct FoundationDirectoryBookmarker: DirectoryBookmarking {
     }
 }
 
+protocol ProjectLibraryLocating {
+    func projectLibraryURL() throws -> URL
+}
+
+struct ApplicationSupportProjectLibraryLocator: ProjectLibraryLocating {
+    func projectLibraryURL() throws -> URL {
+        URL.applicationSupportDirectory
+            .appending(path: "WorkBench", directoryHint: .isDirectory)
+            .appending(path: "Projects", directoryHint: .isDirectory)
+    }
+}
+
+protocol MigrationCompletionStoring {
+    var isComplete: Bool { get }
+    func markComplete()
+}
+
+struct UserDefaultsMigrationCompletionStore: MigrationCompletionStoring {
+    private let defaults: UserDefaults
+    private let key: String
+
+    init(defaults: UserDefaults = .standard, key: String = "applicationSupportMigrationCompleted") {
+        self.defaults = defaults
+        self.key = key
+    }
+
+    var isComplete: Bool { defaults.bool(forKey: key) }
+    func markComplete() { defaults.set(true, forKey: key) }
+}
+
 @MainActor
 @Observable
 final class ConfigurationDirectoryAccess {
     enum Status: Equatable {
         case unresolved
-        case needsSelection(message: String?)
+        case migrationAvailable(legacyDirectory: URL)
+        case failed(message: String)
         case ready(URL)
     }
 
     private(set) var status: Status = .unresolved
 
-    private let bookmarkStore: any BookmarkDataStoring
+    private let locator: any ProjectLibraryLocating
+    private let legacyBookmarkStore: any BookmarkDataStoring
     private let bookmarker: any DirectoryBookmarking
+    private let migrationStore: any MigrationCompletionStoring
     private let fileManager: FileManager
 
     init(
-        bookmarkStore: any BookmarkDataStoring = UserDefaultsBookmarkDataStore(),
+        locator: any ProjectLibraryLocating = ApplicationSupportProjectLibraryLocator(),
+        legacyBookmarkStore: any BookmarkDataStoring = UserDefaultsBookmarkDataStore(),
         bookmarker: any DirectoryBookmarking = FoundationDirectoryBookmarker(),
+        migrationStore: any MigrationCompletionStoring = UserDefaultsMigrationCompletionStore(),
         fileManager: FileManager = .default,
         initialStatus: Status = .unresolved
     ) {
-        self.bookmarkStore = bookmarkStore
+        self.locator = locator
+        self.legacyBookmarkStore = legacyBookmarkStore
         self.bookmarker = bookmarker
+        self.migrationStore = migrationStore
         self.fileManager = fileManager
         status = initialStatus
     }
@@ -118,70 +142,155 @@ final class ConfigurationDirectoryAccess {
         return try operation(url)
     }
 
-    func restoreAccess() {
-        guard let bookmarkData = bookmarkStore.load() else {
-            status = .needsSelection(message: nil)
-            return
-        }
+    func prepare() {
+        do {
+            let destination = try locator.projectLibraryURL()
+            try createParentDirectory(for: destination)
 
+            if try directoryExists(destination) {
+                try verifyReadWriteAccess(to: destination)
+                let containsProjects = try containsProjectFiles(destination)
+                if migrationStore.isComplete || containsProjects {
+                    status = .ready(destination)
+                    return
+                }
+            }
+
+            if !migrationStore.isComplete,
+               let legacyDirectory = try resolveLegacyDirectory() {
+                status = .migrationAvailable(legacyDirectory: legacyDirectory)
+                return
+            }
+
+            try createAndVerifyDirectory(destination)
+            status = .ready(destination)
+        } catch {
+            status = .failed(message: Self.message(for: error))
+        }
+    }
+
+    func migrateLegacyProjects() {
+        guard case let .migrationAvailable(legacyDirectory) = status else { return }
+        do {
+            let destination = try locator.projectLibraryURL()
+            if try directoryExists(destination) {
+                guard try fileManager.contentsOfDirectory(atPath: destination.path).isEmpty else {
+                    throw ConfigurationDirectoryAccessError.migrationDestinationNotEmpty
+                }
+                try fileManager.removeItem(at: destination)
+            }
+
+            let staging = destination.deletingLastPathComponent().appending(
+                path: "Projects.migration-\(UUID().uuidString)",
+                directoryHint: .isDirectory
+            )
+            try fileManager.createDirectory(at: staging, withIntermediateDirectories: false)
+            do {
+                for source in try legacyProjectFiles(in: legacyDirectory) {
+                    try fileManager.copyItem(
+                        at: source,
+                        to: staging.appending(path: source.lastPathComponent)
+                    )
+                }
+                try fileManager.moveItem(at: staging, to: destination)
+            } catch {
+                try? fileManager.removeItem(at: staging)
+                throw error
+            }
+
+            try verifyReadWriteAccess(to: destination)
+            migrationStore.markComplete()
+            status = .ready(destination)
+        } catch {
+            status = .failed(message: "WorkBench could not import the previous Project library. \(Self.message(for: error))")
+        }
+    }
+
+    func startWithEmptyLibrary() {
+        do {
+            let destination = try locator.projectLibraryURL()
+            try createParentDirectory(for: destination)
+            try createAndVerifyDirectory(destination)
+            migrationStore.markComplete()
+            status = .ready(destination)
+        } catch {
+            status = .failed(message: Self.message(for: error))
+        }
+    }
+
+    private func resolveLegacyDirectory() throws -> URL? {
+        guard let bookmarkData = legacyBookmarkStore.load() else { return nil }
         do {
             let resolved = try bookmarker.resolveBookmark(bookmarkData)
             guard !resolved.isStale else {
-                throw ConfigurationDirectoryAccessError.bookmarkIsStale
+                throw ConfigurationDirectoryAccessError.legacyBookmarkIsStale
             }
-            try Self.validateDirectory(resolved.url, fileManager: fileManager)
-            try verifyReadWriteAccess(to: resolved.url)
-            status = .ready(resolved.url)
+            guard try directoryExists(resolved.url) else {
+                throw ConfigurationDirectoryAccessError.notDirectory
+            }
+            return resolved.url
         } catch {
-            bookmarkStore.remove()
-            status = .needsSelection(message: Self.message(for: error))
+            legacyBookmarkStore.remove()
+            if error as? ConfigurationDirectoryAccessError == .legacyBookmarkIsStale {
+                return nil
+            }
+            throw error
         }
     }
 
-    func selectDirectory(_ url: URL) {
-        do {
-            try Self.validateDirectory(url, fileManager: fileManager)
-            let bookmarkData = try bookmarker.createBookmark(for: url)
-            try verifyReadWriteAccess(to: url)
-            bookmarkStore.save(bookmarkData)
-            status = .ready(url)
-        } catch {
-            status = .needsSelection(message: Self.message(for: error))
-        }
+    private func legacyProjectFiles(in directory: URL) throws -> [URL] {
+        try fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        )
+        .filter { $0.pathExtension.lowercased() == "json" }
+        .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
     }
 
-    static func validateDirectory(_ url: URL, fileManager: FileManager = .default) throws {
-        guard url.lastPathComponent == "WorkBench" else {
-            throw ConfigurationDirectoryAccessError.notWorkBenchFolder
-        }
+    private func containsProjectFiles(_ directory: URL) throws -> Bool {
+        try !legacyProjectFiles(in: directory).isEmpty
+    }
 
-        var isDirectory: ObjCBool = false
-        guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory),
-              isDirectory.boolValue else {
+    private func createParentDirectory(for destination: URL) throws {
+        try fileManager.createDirectory(
+            at: destination.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+    }
+
+    private func createAndVerifyDirectory(_ directory: URL) throws {
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+        guard try directoryExists(directory) else {
             throw ConfigurationDirectoryAccessError.notDirectory
         }
+        try verifyReadWriteAccess(to: directory)
+    }
+
+    private func directoryExists(_ url: URL) throws -> Bool {
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return false }
+        guard isDirectory.boolValue else { throw ConfigurationDirectoryAccessError.notDirectory }
+        return true
     }
 
     private func verifyReadWriteAccess(to directory: URL) throws {
-        let probeURL = directory.appending(
-            path: ".workbench-access-probe-\(UUID().uuidString)",
-            directoryHint: .notDirectory
-        )
+        let probeURL = directory.appending(path: ".workbench-access-probe-\(UUID().uuidString)")
         let expectedData = Data("WorkBench access probe".utf8)
-
         defer { try? fileManager.removeItem(at: probeURL) }
-        try expectedData.write(to: probeURL, options: .atomic)
-        let actualData = try Data(contentsOf: probeURL)
-        guard actualData == expectedData else {
+        do {
+            try expectedData.write(to: probeURL, options: .atomic)
+            guard try Data(contentsOf: probeURL) == expectedData else {
+                throw ConfigurationDirectoryAccessError.accessDenied
+            }
+            try fileManager.removeItem(at: probeURL)
+        } catch {
             throw ConfigurationDirectoryAccessError.accessDenied
         }
-        try fileManager.removeItem(at: probeURL)
     }
 
     private static func message(for error: Error) -> String {
-        if let description = (error as? LocalizedError)?.errorDescription {
-            return description
-        }
-        return "WorkBench could not access the selected folder. \(error.localizedDescription)"
+        (error as? LocalizedError)?.errorDescription
+            ?? "WorkBench could not prepare its Project library. \(error.localizedDescription)"
     }
 }

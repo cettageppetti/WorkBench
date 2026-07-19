@@ -2,6 +2,34 @@
 
 This document records implementation details and discoveries that may evolve as the MVP is built. The stable product vision remains in `docs/WorkBench_MVP_Design_Specification.md`.
 
+## Application-managed Project library
+
+WorkBench now owns its live Project storage at
+`~/Library/Application Support/WorkBench/Projects`, resolved through
+Foundation's Application Support API. The former Documents-folder bookmark is
+no longer required for normal operation and is read only to discover a one-time
+migration source. JSON remains the internal versioned persistence format, but
+direct editing is no longer a supported product interface.
+
+When the managed library is empty and the legacy bookmark resolves, the user
+may import existing Projects or start empty. Import copies only JSON files into
+a temporary sibling staging directory and installs it only when copying
+succeeds. It never deletes or modifies the legacy directory and refuses to
+overwrite a destination that became nonempty. A new repository-initialization
+preference key keeps the former repository's initialization state from
+suppressing Starter Project creation in a genuinely empty managed library.
+
+The normal first-run folder picker and bookmark-recovery UI are removed.
+**Reload Projects** retains the existing unsaved-change workflow, and **Reveal
+Project Library** provides explicit backup and support access without presenting
+the live storage directory as a user-editable document collection.
+
+A signed local acceptance pass imported two legacy Project files from
+`~/Documents/WorkBench`. Both managed copies matched their sources byte for
+byte, both sources remained in place, and the Projects appeared immediately.
+After quitting and reopening the same build, WorkBench loaded the managed
+library directly without presenting the import choice again.
+
 ## Approved AeroSpace launch-destination contract
 
 A Project may optionally name one AeroSpace workspace. WorkBench activates it
@@ -130,7 +158,7 @@ failure, and unknown destination types launch no Resources and retain the
 attempted Project snapshot for explicit **Open Without Placement** or **Cancel**
 recovery. The Open command is disabled while activation is in progress. UI-test
 doubles never contact AeroSpace or move the active workspace. After the Settings
-and editor increment, the complete signed scheme passes all 81 unit tests and
+and editor increment, the complete signed scheme passes all 82 unit tests and
 all 16 UI tests.
 
 ## AeroSpace Settings and Project editor
@@ -365,9 +393,9 @@ The spike screen has been replaced by a conventional single-window macOS editor 
 - the Resources column shows the ordered draft Resources, supports reordering, and provides supported Resource creation and removal controls; and
 - the Properties column edits the Project or selected Resource, shows dirty state and contextual validation, and distinguishes unsupported Resources while explaining that their JSON is preserved.
 
-`WorkBenchApplicationModel` owns presentation coordination without moving filesystem calls into views. It connects folder selection, repository startup, draft commands, error presentation, deletion confirmation, and unsaved-change choices. Window close and standard application termination use the same workflow decisions as Project selection and Reload Configurations.
+`WorkBenchApplicationModel` owns presentation coordination without moving filesystem calls into views. It connects managed-library preparation and migration, repository startup, draft commands, error presentation, deletion confirmation, and unsaved-change choices. Window close and standard application termination use the same workflow decisions as Project selection and Reload Projects.
 
-The application uses a SwiftUI `Window` scene rather than a multi-window group. Save and Reload Configurations are standard menu commands; Reload uses Command-Shift-R. No status-bar item is created. Project launching is intentionally absent from this phase and will connect to the proven Automation adapters through the Phase 6 launch coordinator.
+The application uses a SwiftUI `Window` scene rather than a multi-window group. Save and Reload Projects are standard menu commands; Reload uses Command-Shift-R. Reveal Project Library provides explicit support and backup access. No status-bar item is created. Project launching is intentionally absent from this phase and will connect to the proven Automation adapters through the Phase 6 launch coordinator.
 
 Manual hardening verified keyboard traversal, arrow-key list navigation, form
 focus, dirty-state behavior, and VoiceOver labels. The 840×520 minimum and a
@@ -538,7 +566,7 @@ An eighth end-to-end test verifies that a malformed Project file remains visible
 as a configuration issue and that an unsupported Resource remains selectable,
 identifies its preserved type, and does not prevent its Project from being opened.
 
-A ninth end-to-end test invokes Reload Configurations through its Command-Shift-R
+A ninth end-to-end test invokes Reload Projects through its Command-Shift-R
 shortcut with dirty edits. It verifies that Cancel preserves the draft, Discard
 restores the repository value, and Save persists the edit before reload continues.
 

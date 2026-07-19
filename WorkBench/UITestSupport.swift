@@ -5,7 +5,7 @@ import Foundation
 enum UITestModelFactory {
     private static let launchArgument = "--workbench-ui-testing"
     private static let launchEnvironmentKey = "WORKBENCH_UI_TESTING"
-    private static let needsDirectoryEnvironmentKey = "WORKBENCH_UI_TEST_NEEDS_DIRECTORY"
+    private static let needsMigrationEnvironmentKey = "WORKBENCH_UI_TEST_NEEDS_MIGRATION"
     private static var model: WorkBenchApplicationModel?
 
     static func makeIfRequested(
@@ -57,8 +57,8 @@ enum UITestModelFactory {
             finderLauncher: UITestFinderLauncher()
         )
         let directoryStatus: ConfigurationDirectoryAccess.Status =
-            environment[needsDirectoryEnvironmentKey] == "1"
-            ? .needsSelection(message: "Access to the WorkBench folder has expired. Select it again.")
+            environment[needsMigrationEnvironmentKey] == "1"
+            ? .migrationAvailable(legacyDirectory: URL(fileURLWithPath: "/Documents/WorkBench"))
             : .ready(URL(fileURLWithPath: "/WorkBench"))
         let directoryAccess = ConfigurationDirectoryAccess(initialStatus: directoryStatus)
         let model = WorkBenchApplicationModel(

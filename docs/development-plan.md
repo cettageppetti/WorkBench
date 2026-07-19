@@ -34,7 +34,7 @@ Resolve platform risks before investing in the full interface. Spike code should
 - Verify first-access behavior on a clean machine or clean permission state.
 - Document any App Store or signing limitations discovered.
 
-The spike confirmed that fixed Documents access is unavailable under App Sandbox. The approved product flow uses user-selected directory access and an app-scoped security bookmark.
+The spike confirmed that fixed Documents access is unavailable under App Sandbox. The original selected-directory flow was later superseded by an application-managed Project library under Application Support; its bookmark remains only for one-time migration discovery.
 
 ### Application Automation spike
 
@@ -155,7 +155,7 @@ Implementation status: repository behavior and isolated integration tests are co
 - Delete a Project file only after confirmation is supplied by the workflow layer.
 - Bootstrap Starter Project only for a genuinely uninitialized repository.
 - Preserve a durable initialized state so intentional deletion does not recreate Starter Project.
-- Reload configurations on demand.
+- Reload the managed Project library on demand.
 
 ### Automated tests
 
@@ -168,12 +168,12 @@ Implementation status: repository behavior and isolated integration tests are co
 - Rename does not change the filename.
 - Duplicate creates new Project and Resource identifiers and a unique name.
 - Delete success and delete failure produce correct repository state.
-- Reload reflects external edits.
+- Reload reflects the latest managed repository state.
 
 ### Exit criteria
 
 - All repository tests use isolated temporary directories.
-- Tests never read or write the developer's real `~/Documents/WorkBench`.
+- Tests never read or write the developer's real Application Support Project library.
 - Partial writes and silent file omission are covered by tests.
 
 ## Phase 4: Draft editing workflows
@@ -210,7 +210,7 @@ Implementation status: the production single-window editor, standard Save/Reload
 - Present Projects, Resources, properties, dirty state, and contextual validation.
 - Add Resource creation and drag-to-reorder behavior.
 - Add Project commands and deletion confirmation.
-- Wire **Reload Configurations** and normal macOS termination behavior into standard application menus.
+- Wire **Reload Projects**, **Reveal Project Library**, and normal macOS termination behavior into standard application menus.
 - Present invalid files and unsupported Resources without making them disappear.
 - Keep views free of direct filesystem and Apple Event operations.
 
@@ -259,12 +259,12 @@ Implementation status: the production coordinator, parameterized adapters, struc
 
 ## Phase 7: MVP hardening and documentation
 
-Implementation status: schema version 1 and hand-editing guidance are documented, the requirement-by-requirement verification baseline is recorded in `mvp-verification.md`, and the first automated UI rename/save flow passes. Permission recovery, expanded UI coverage, verified run instructions, and final hardening checks remain.
+Implementation status: managed Project storage, internal schema compatibility, and migration guidance are documented; the requirement-by-requirement verification baseline is recorded in `mvp-verification.md`. Permission recovery and final hardening checks remain.
 
 ### Outcomes
 
 - Review the implementation against every product requirement and explicit non-goal.
-- Document schema version 1 and hand-editing guidance.
+- Document schema compatibility, managed storage, and legacy migration guidance.
 - Document Automation and filesystem permissions and their recovery steps.
 - Update `README.md` with verified build, test, and run instructions.
 - Record implementation choices and known limitations in `IMPLEMENTATION_NOTES.md` without casually changing the north-star specification.
@@ -274,8 +274,8 @@ Implementation status: schema version 1 and hand-editing guidance are documented
 
 - Run all unit, repository integration, and UI tests.
 - Perform a clean build and review every warning.
-- Test first run with no WorkBench directory.
-- Test valid and invalid hand-edited JSON.
+- Test first run with no managed Project library.
+- Test valid and invalid internal Project data and legacy migration.
 - Test an unknown Resource payload through load, display, save, and launch.
 - Test Save/Discard/Cancel from every required trigger.
 - Test real Safari, Terminal, and Finder integration under allowed and denied permissions.

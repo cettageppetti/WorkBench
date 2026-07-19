@@ -15,7 +15,7 @@ Potential future users include Mac power users and software developers who repea
 ## Product goals
 
 1. Let the user define a Project as an ordered collection of independent Resources.
-2. Persist Projects in a format that is readable and editable outside WorkBench.
+2. Persist Projects in an application-managed, durable, versioned format.
 3. Recreate each Project predictably with one action.
 4. Isolate Resource failures so one failure does not prevent other Resources from opening.
 5. Establish a model that can gain new Resource types without redesigning Project identity or persistence.
@@ -28,8 +28,7 @@ The MVP succeeds when the user can:
 2. Create or edit a Project and explicitly save it.
 3. Quit and relaunch WorkBench without losing saved changes.
 4. Open a Project and observe its supported Resources open sequentially in displayed order.
-5. Understand and act on configuration, permission, validation, and launch failures.
-6. Hand-edit a Project's JSON and load the change by relaunching WorkBench or choosing **Reload Configurations**.
+5. Understand and act on Project-data, permission, validation, and launch failures.
 
 ## Core concepts
 
@@ -61,14 +60,15 @@ The order shown in the Resource list is the saved order and the launch order.
 - WorkBench shall be a conventional single-window macOS application.
 - It shall use the standard macOS application menu bar, not a menu-bar status item.
 - The main window shall use the three-column organization from the design specification: Projects, Resources, and Properties.
-- Standard application menus shall include **Reload Configurations** and **Quit** in appropriate conventional locations.
+- Standard application menus shall include **Reload Projects**, **Reveal Project Library**, and **Quit** in appropriate conventional locations.
 
 ### First launch
 
-- On first initialization, WorkBench shall ask the user to create or select `~/Documents/WorkBench` through a standard macOS folder-selection panel.
-- WorkBench shall persist the selected location with a standard macOS bookmark and restore it on later launches.
-- If the bookmark is missing, stale, or denied, WorkBench shall explain the problem and ask the user to select the folder again.
-- On the first initialization, if no saved Project configurations exist, WorkBench shall create and persist exactly one Project named **Starter Project**.
+- WorkBench shall manage Projects under the current user's standard Application Support directory at `WorkBench/Projects`.
+- WorkBench shall create the managed directory without requiring a folder-selection panel.
+- When the managed library is empty and a former selected Project folder is available, WorkBench shall offer to copy its JSON Project files or start with an empty library.
+- Migration shall never delete or modify the former Project folder and shall never overwrite a nonempty managed library.
+- On the first initialization, if no saved Projects exist, WorkBench shall create and persist exactly one Project named **Starter Project**.
 - WorkBench shall persist initialization state separately from the presence of Project files, so deleting Starter Project does not cause it to reappear.
 - Starter Project shall contain, in order:
 
@@ -82,7 +82,7 @@ The order shown in the Resource list is the saved order and the launch order.
 - Project names shall be nonempty after trimming whitespace and unique within WorkBench.
 - A Project's stable identifier and filename shall not change when its friendly name changes.
 - Duplicating a Project shall create new stable identifiers for the Project and its Resources and shall require or generate a unique friendly name.
-- Deleting a Project shall require confirmation before its JSON file is removed.
+- Deleting a Project shall require confirmation before its persisted data is removed.
 - Project deletion is complete only after the corresponding persisted file has been removed successfully.
 
 ### Resource management
@@ -96,24 +96,23 @@ The order shown in the Resource list is the saved order and the launch order.
 
 - GUI edits shall remain in an in-memory draft until the user chooses **Save**.
 - The UI shall clearly indicate when the selected Project has unsaved changes.
-- Before switching Projects, closing the window, quitting, or reloading configurations with an unsaved draft, WorkBench shall offer **Save**, **Discard**, and **Cancel**.
+- Before switching Projects, closing the window, quitting, or reloading Projects with an unsaved draft, WorkBench shall offer **Save**, **Discard**, and **Cancel**.
 - **Save** shall validate and persist before continuing the pending action.
 - **Discard** shall restore the last loaded or saved representation before continuing.
 - **Cancel** shall leave the draft and application state unchanged.
 - A failed save shall cancel the pending destructive or navigational action and present the error.
 
-### Persistence and manual editing
+### Managed persistence
 
-- WorkBench shall store one JSON file per Project under `~/Documents/WorkBench`.
+- WorkBench shall store one JSON file per Project under `~/Library/Application Support/WorkBench/Projects`.
 - Each filename shall be based on the Project's stable identifier, not its friendly name.
-- JSON shall be human-readable and use a documented, versioned schema.
+- JSON is an internal persistence format and shall use a versioned schema; direct editing is unsupported.
 - WorkBench shall use only home-relative paths beginning with `~` or absolute paths. Other relative paths are invalid.
 - WorkBench shall expand `~` to the current user's home directory when resolving paths.
-- Project files may be edited by hand while WorkBench is not using their contents as a draft.
-- WorkBench shall load files at application launch and when the user chooses **Reload Configurations**.
+- WorkBench shall load files at application launch and when the user chooses **Reload Projects**.
 - Live file watching and automatic mid-session reload are not required.
 - Reload shall replace loaded data only after unsaved changes have been resolved.
-- Invalid JSON or invalid Project data shall remain represented in the UI with a useful file-specific error rather than being skipped silently.
+- Invalid internal JSON or invalid Project data shall remain represented in the UI with a useful file-specific error rather than being skipped silently.
 - An invalid Project shall not be launchable until repaired.
 - WorkBench shall preserve unknown Resource objects without data loss, display them as unsupported, and allow the Project's known Resources to launch.
 - Saving a Project containing unsupported Resources shall preserve their unknown JSON payloads unchanged except for formatting that does not alter data.
@@ -230,13 +229,13 @@ The order shown in the Resource list is the saved order and the launch order.
 
 Given a clean first launch:
 
-1. WorkBench asks the user to create or select `~/Documents/WorkBench` and persists access to it.
+1. WorkBench creates its managed Project library in Application Support; if a former selected library exists, it offers a copy-based import or a clean start.
 2. The Projects column shows **Starter Project**.
 3. Its Resources column shows Safari, Terminal, and Finder in that order.
 4. Choosing **Open Project** requests necessary permissions and then attempts each Resource sequentially.
 5. Safari opens a new window with Apple and IBM tabs, Terminal opens at the user's home directory, and Finder opens the user's home directory.
 6. After renaming or reordering a Resource, quitting prompts Save/Discard/Cancel.
 7. Saving, quitting, and relaunching restores the saved state.
-8. A valid hand edit is visible after relaunch or **Reload Configurations**.
-9. An invalid JSON file remains visible with an actionable error.
+8. **Reload Projects** preserves the normal unsaved-change decision before reloading managed data.
+9. Invalid internal Project data remains visible with an actionable error.
 10. An unknown Resource remains visible as unsupported while known Resources can still open.

@@ -18,9 +18,9 @@ The MVP will answer one question: can a user describe a working environment as a
 - Open Chrome windows containing configured tabs.
 - Open Terminal windows at configured directories.
 - Open Finder windows at configured folders.
-- Store one human-readable JSON file per Project in `~/Documents/WorkBench`.
-- Remember the selected folder through a standard macOS bookmark and restore it on later launches.
-- Load hand-edited configuration files at launch or through the standard macOS **Reload Configurations** command.
+- Manage Project data under `~/Library/Application Support/WorkBench/Projects`.
+- Offer a one-time, copy-based import from the former user-selected Project folder without deleting the source.
+- Reload the application-managed Project library through **Reload Projects**.
 - Report invalid files and unsupported Resource types without hiding them.
 - Continue opening the remaining Resources when an individual Resource fails.
 - Optionally activate a Project-level AeroSpace workspace before opening Resources.
@@ -41,7 +41,7 @@ On first launch, WorkBench creates a **Starter Project** that opens:
 - [Product requirements](docs/product-requirements.md) — testable MVP behavior and acceptance criteria
 - [Architecture](docs/architecture.md) — technical boundaries and design decisions
 - [Development plan](docs/development-plan.md) — phased implementation and verification plan
-- [Configuration guide](docs/configuration.md) — schema versions 1–2 and safe hand-editing guidance
+- [Project data guide](docs/configuration.md) — managed storage, migration, and internal schema compatibility
 - [MVP verification status](docs/mvp-verification.md) — automated, manual, and remaining acceptance coverage
 
 The design specification should change only when the product vision changes. Implementation discoveries should be recorded separately as the codebase develops.
