@@ -56,18 +56,41 @@ validation, Settings store, and persistence tests implement this contract.
 
 ## Typed AeroSpace client
 
-`AeroSpaceClient` implements only two fixed operations: list all workspaces and
-activate one named workspace. It discovers the CLI at the standard Apple Silicon
-and Intel Homebrew locations, invokes it directly with argument arrays, and
-never exposes a generic command or shell boundary. Each command has a five-second
-timeout and returns a typed error for a missing executable, process-launch
-failure, timeout, nonzero exit, malformed JSON, or failed focus confirmation.
+`AeroSpaceClient` implements fixed typed operations to list all workspaces,
+activate one named workspace, list windows for one application bundle
+identifier, and move and confirm one explicit window ID. It discovers the CLI
+at the standard Apple Silicon and Intel Homebrew locations, invokes it directly
+with argument arrays, and never exposes a generic command or shell boundary.
+Each command has a five-second timeout and returns a typed error for a missing
+executable, process-launch failure, timeout, nonzero exit, malformed JSON, failed
+focus confirmation, invalid window input, a disappeared window, or a placement
+confirmation mismatch.
 
 Activation sends the workspace name as one argument after `--`, then queries the
 focused workspace and requires an exact match before reporting success. The
 client remains separate from `ProjectLauncher` and is called by the application
 model as an asynchronous launch preflight. A read-only check against the locally
 installed AeroSpace `0.21.2-Beta` confirmed the expected JSON object shape.
+Workspace control and window control use separate injectable protocols so
+Settings and launch preflight do not depend on placement operations they never
+invoke.
+
+## Per-Resource AeroSpace placement coordination
+
+`ProjectLauncher` is asynchronous and accepts an optional already-approved
+placement workspace. For each supported Resource in a placed Project, it lists
+that application's AeroSpace windows before invoking the adapter, polls after a
+successful launch for one new window ID, moves that exact ID, relies on the
+typed client to confirm its destination, and reactivates the Project workspace
+before continuing. Normal-placement Projects do not query AeroSpace.
+
+A failed initial snapshot skips that Resource because WorkBench cannot safely
+correlate a subsequently created window. After a window opens, zero candidates
+at the bounded deadline, multiple candidates, a query failure, or a move or
+confirmation failure produces a Resource failure and never guesses a window.
+WorkBench attempts to restore the Project workspace after those failures and
+continues with later Resources. **Open Without Placement** remains an explicit
+preflight recovery path and bypasses all per-window placement operations.
 
 The preflight validates first, then bypasses placement for destination-free
 Projects or activates and confirms a known AeroSpace destination when the
@@ -76,7 +99,7 @@ failure, and unknown destination types launch no Resources and retain the
 attempted Project snapshot for explicit **Open Without Placement** or **Cancel**
 recovery. The Open command is disabled while activation is in progress. UI-test
 doubles never contact AeroSpace or move the active workspace. After the Settings
-and editor increment, the complete signed scheme passes all 71 unit tests and
+and editor increment, the complete signed scheme passes all 81 unit tests and
 all 16 UI tests.
 
 ## AeroSpace Settings and Project editor

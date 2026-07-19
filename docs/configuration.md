@@ -112,6 +112,14 @@ even when AeroSpace is unavailable. **Refresh Workspaces** adds the names
 reported by the current machine to a choice menu without replacing the manual
 value. Save the Project to persist its destination.
 
+When a Project has an AeroSpace destination, WorkBench places each window it
+creates into that workspace. This explicit Project placement overrides a global
+`on-window-detected` workspace rule for that new window only; it does not edit
+the AeroSpace configuration or move unrelated windows. WorkBench reports a
+Resource failure and moves nothing if it cannot identify exactly one new
+window. It continues with later Resources and attempts to restore focus to the
+Project workspace.
+
 ## Resolving errors
 
 When a file is reported as invalid:

@@ -7,6 +7,10 @@ enum AeroSpaceClientError: Error, Equatable {
     case commandFailed(exitCode: Int32, message: String)
     case invalidResponse
     case workspaceNotFocused(expected: String, actual: String?)
+    case invalidApplicationBundleIdentifier
+    case invalidWindowIdentifier(Int)
+    case windowNotFound(Int)
+    case windowNotInWorkspace(id: Int, expected: String, actual: String)
 }
 
 extension AeroSpaceClientError {
@@ -19,7 +23,7 @@ extension AeroSpaceClientError {
         case .timedOut:
             "AeroSpace did not respond before the operation timed out."
         case let .commandFailed(_, message):
-            "AeroSpace could not activate the workspace: \(message)"
+            "AeroSpace could not complete the requested operation: \(message)"
         case .invalidResponse:
             "AeroSpace returned a response that WorkBench could not understand."
         case let .workspaceNotFocused(expected, actual):
@@ -28,13 +32,47 @@ extension AeroSpaceClientError {
             } else {
                 "AeroSpace did not report a focused workspace after activating \"\(expected)\"."
             }
+        case .invalidApplicationBundleIdentifier:
+            "WorkBench could not identify the application whose windows should be placed."
+        case let .invalidWindowIdentifier(id):
+            "WorkBench received invalid AeroSpace window identifier \(id)."
+        case let .windowNotFound(id):
+            "AeroSpace no longer reports window \(id)."
+        case let .windowNotInWorkspace(id, expected, actual):
+            "AeroSpace reports window \(id) in workspace \"\(actual)\" instead of \"\(expected)\"."
         }
+    }
+}
+
+struct AeroSpaceWindow: Equatable, Decodable {
+    let id: Int
+    let applicationBundleIdentifier: String
+    let processIdentifier: Int32
+    let workspace: String
+    let title: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id = "window-id"
+        case applicationBundleIdentifier = "app-bundle-id"
+        case processIdentifier = "app-pid"
+        case workspace
+        case title = "window-title"
     }
 }
 
 protocol AeroSpaceControlling {
     func listWorkspaces() async -> Result<[String], AeroSpaceClientError>
     func activateWorkspace(named workspace: String) async -> Result<Void, AeroSpaceClientError>
+}
+
+protocol AeroSpaceWindowControlling {
+    func listWindows(
+        forApplicationBundleIdentifier bundleIdentifier: String
+    ) async -> Result<[AeroSpaceWindow], AeroSpaceClientError>
+    func moveWindow(
+        id: Int,
+        toWorkspace workspace: String
+    ) async -> Result<Void, AeroSpaceClientError>
 }
 
 struct AeroSpaceCommandResult: Equatable {
@@ -91,7 +129,10 @@ struct FoundationAeroSpaceCommandRunner: AeroSpaceCommandRunning {
     }
 }
 
-struct AeroSpaceClient: AeroSpaceControlling {
+struct AeroSpaceClient: AeroSpaceControlling, AeroSpaceWindowControlling {
+    private static let windowJSONFormat =
+        "%{window-id} %{app-bundle-id} %{app-pid} %{workspace} %{window-title}"
+
     private let commandRunner: any AeroSpaceCommandRunning
     private let fileManager: FileManager
     private let executableCandidates: [URL]
@@ -149,6 +190,77 @@ struct AeroSpaceClient: AeroSpaceControlling {
         }
     }
 
+    func listWindows(
+        forApplicationBundleIdentifier bundleIdentifier: String
+    ) async -> Result<[AeroSpaceWindow], AeroSpaceClientError> {
+        guard !bundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return .failure(.invalidApplicationBundleIdentifier)
+        }
+        switch await execute([
+            "list-windows",
+            "--monitor", "all",
+            "--app-bundle-id", bundleIdentifier,
+            "--format", Self.windowJSONFormat,
+            "--json"
+        ]) {
+        case let .success(result):
+            guard let windows = decodeWindows(result.standardOutput) else {
+                return .failure(.invalidResponse)
+            }
+            return .success(windows)
+        case let .failure(error):
+            return .failure(error)
+        }
+    }
+
+    func moveWindow(
+        id: Int,
+        toWorkspace workspace: String
+    ) async -> Result<Void, AeroSpaceClientError> {
+        guard id > 0 else { return .failure(.invalidWindowIdentifier(id)) }
+        guard !workspace.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return .failure(.workspaceNotFocused(expected: workspace, actual: nil))
+        }
+
+        switch await execute([
+            "move-node-to-workspace",
+            "--window-id", String(id),
+            "--", workspace
+        ]) {
+        case .success:
+            break
+        case let .failure(error):
+            return .failure(error)
+        }
+
+        switch await execute([
+            "list-windows",
+            "--monitor", "all",
+            "--format", Self.windowJSONFormat,
+            "--json"
+        ]) {
+        case let .success(result):
+            guard let windows = decodeWindows(result.standardOutput) else {
+                return .failure(.invalidResponse)
+            }
+            guard let window = windows.first(where: { $0.id == id }) else {
+                return .failure(.windowNotFound(id))
+            }
+            guard window.workspace == workspace else {
+                return .failure(
+                    .windowNotInWorkspace(
+                        id: id,
+                        expected: workspace,
+                        actual: window.workspace
+                    )
+                )
+            }
+            return .success(())
+        case let .failure(error):
+            return .failure(error)
+        }
+    }
+
     private func execute(_ arguments: [String]) async -> Result<AeroSpaceCommandResult, AeroSpaceClientError> {
         guard let executableURL = executableCandidates.first(where: {
             fileManager.isExecutableFile(atPath: $0.path)
@@ -187,5 +299,9 @@ struct AeroSpaceClient: AeroSpaceControlling {
         }.count == array.count
             ? array.compactMap { ($0 as? [String: Any])?["workspace"] as? String }
             : nil
+    }
+
+    private func decodeWindows(_ data: Data) -> [AeroSpaceWindow]? {
+        try? JSONDecoder().decode([AeroSpaceWindow].self, from: data)
     }
 }

@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class ProjectLauncherTests: XCTestCase {
-    func testResourcesLaunchSequentiallyAndContinueAfterFailure() {
+    func testResourcesLaunchSequentiallyAndContinueAfterFailure() async {
         let recorder = InvocationRecorder()
         let launcher = ProjectLauncher(
             browserLauncher: BrowserLauncherStub(recorder: recorder, error: "Safari denied"),
@@ -26,7 +26,7 @@ final class ProjectLauncherTests: XCTestCase {
             at: 2
         )
 
-        let report = launcher.open(project)
+        let report = await launcher.open(project)
 
         XCTAssertEqual(recorder.applications, ["Safari", "Chrome", "Terminal", "Finder"])
         XCTAssertTrue(report.didLaunch)
@@ -40,7 +40,7 @@ final class ProjectLauncherTests: XCTestCase {
         ])
     }
 
-    func testInvalidProjectDoesNotInvokeAnyAdapter() {
+    func testInvalidProjectDoesNotInvokeAnyAdapter() async {
         let recorder = InvocationRecorder()
         let launcher = ProjectLauncher(
             browserLauncher: BrowserLauncherStub(recorder: recorder),
@@ -52,13 +52,199 @@ final class ProjectLauncherTests: XCTestCase {
             resources: [Resource(name: "Browser", payload: .browserWindow(BrowserWindow(tabs: [])))]
         )
 
-        let report = launcher.open(project)
+        let report = await launcher.open(project)
 
         XCTAssertFalse(report.didLaunch)
         XCTAssertTrue(report.hasProblems)
         XCTAssertTrue(report.results.isEmpty)
         XCTAssertFalse(report.validationIssues.isEmpty)
         XCTAssertTrue(recorder.applications.isEmpty)
+    }
+
+    func testPlacedResourceSnapshotsCreatesMovesConfirmsAndRestoresWorkspace() async {
+        let recorder = InvocationRecorder()
+        let windowController = AeroSpaceWindowControllerStub(listResults: [
+            .success([aeroSpaceWindow(id: 10, bundleIdentifier: "com.apple.Safari", workspace: "C")]),
+            .success([
+                aeroSpaceWindow(id: 10, bundleIdentifier: "com.apple.Safari", workspace: "C"),
+                aeroSpaceWindow(id: 42, bundleIdentifier: "com.apple.Safari", workspace: "C")
+            ])
+        ])
+        let workspaceController = AeroSpaceWorkspaceControllerStub()
+        let launcher = ProjectLauncher(
+            browserLauncher: BrowserLauncherStub(recorder: recorder),
+            aeroSpaceWindowController: windowController,
+            aeroSpaceWorkspaceController: workspaceController,
+            windowDetectionInterval: .zero
+        )
+        let project = Project(name: "Placed", resources: [
+            Resource(
+                name: "Safari",
+                payload: .browserWindow(BrowserWindow(tabs: ["https://example.com"]))
+            )
+        ])
+
+        let report = await launcher.open(project, placementWorkspace: "6")
+
+        XCTAssertEqual(report.results.map(\.outcome), [.succeeded])
+        XCTAssertEqual(recorder.applications, ["Safari"])
+        XCTAssertEqual(windowController.listBundleIdentifiers, [
+            "com.apple.Safari", "com.apple.Safari"
+        ])
+        XCTAssertEqual(windowController.moves, [.init(id: 42, workspace: "6")])
+        XCTAssertEqual(workspaceController.activations, ["6"])
+    }
+
+    func testAmbiguousPlacementMovesNothingAndContinuesWithLaterResource() async {
+        let recorder = InvocationRecorder()
+        let windowController = AeroSpaceWindowControllerStub(listResults: [
+            .success([]),
+            .success([
+                aeroSpaceWindow(id: 42, bundleIdentifier: "com.apple.Safari", workspace: "6"),
+                aeroSpaceWindow(id: 43, bundleIdentifier: "com.apple.Safari", workspace: "6")
+            ]),
+            .success([]),
+            .success([
+                aeroSpaceWindow(id: 44, bundleIdentifier: "com.apple.finder", workspace: "C")
+            ])
+        ])
+        let workspaceController = AeroSpaceWorkspaceControllerStub()
+        let launcher = ProjectLauncher(
+            browserLauncher: BrowserLauncherStub(recorder: recorder),
+            finderLauncher: FinderLauncherStub(recorder: recorder),
+            aeroSpaceWindowController: windowController,
+            aeroSpaceWorkspaceController: workspaceController,
+            windowDetectionInterval: .zero
+        )
+        let project = Project(name: "Placed", resources: [
+            Resource(
+                name: "Safari",
+                payload: .browserWindow(BrowserWindow(tabs: ["https://example.com"]))
+            ),
+            Resource(name: "Finder", payload: .finderWindow(FinderWindow(folder: "~/")))
+        ])
+
+        let report = await launcher.open(project, placementWorkspace: "6")
+
+        XCTAssertEqual(recorder.applications, ["Safari", "Finder"])
+        XCTAssertEqual(windowController.moves, [.init(id: 44, workspace: "6")])
+        XCTAssertEqual(workspaceController.activations, ["6", "6"])
+        XCTAssertEqual(
+            report.results.first?.outcome,
+            .failed(
+                "The window opened, but WorkBench could not place it: "
+                    + "AeroSpace reported multiple new windows (42, 43); no window was moved."
+            )
+        )
+        XCTAssertEqual(report.results.last?.outcome, .succeeded)
+    }
+
+    func testDetectionTimeoutReportsOpenedWindowWithoutMovingAnything() async {
+        let recorder = InvocationRecorder()
+        let windowController = AeroSpaceWindowControllerStub(listResults: [
+            .success([]), .success([]), .success([])
+        ])
+        let workspaceController = AeroSpaceWorkspaceControllerStub()
+        let launcher = ProjectLauncher(
+            browserLauncher: BrowserLauncherStub(recorder: recorder),
+            aeroSpaceWindowController: windowController,
+            aeroSpaceWorkspaceController: workspaceController,
+            windowDetectionAttempts: 2,
+            windowDetectionInterval: .zero
+        )
+        let project = Project(name: "Placed", resources: [
+            Resource(
+                name: "Safari",
+                payload: .browserWindow(BrowserWindow(tabs: ["https://example.com"]))
+            )
+        ])
+
+        let report = await launcher.open(project, placementWorkspace: "6")
+
+        XCTAssertEqual(recorder.applications, ["Safari"])
+        XCTAssertTrue(windowController.moves.isEmpty)
+        XCTAssertEqual(workspaceController.activations, ["6"])
+        XCTAssertEqual(
+            report.results.first?.outcome,
+            .failed(
+                "The window opened, but WorkBench could not place it: "
+                    + "AeroSpace did not detect the new application window before the timeout."
+            )
+        )
+    }
+
+    func testMoveFailureRestoresWorkspaceAndReportsOpenedWindow() async {
+        let recorder = InvocationRecorder()
+        let windowController = AeroSpaceWindowControllerStub(
+            listResults: [
+                .success([]),
+                .success([
+                    aeroSpaceWindow(id: 42, bundleIdentifier: "com.apple.Safari", workspace: "C")
+                ])
+            ],
+            moveResult: .failure(.timedOut)
+        )
+        let workspaceController = AeroSpaceWorkspaceControllerStub()
+        let launcher = ProjectLauncher(
+            browserLauncher: BrowserLauncherStub(recorder: recorder),
+            aeroSpaceWindowController: windowController,
+            aeroSpaceWorkspaceController: workspaceController,
+            windowDetectionInterval: .zero
+        )
+        let project = Project(name: "Placed", resources: [
+            Resource(
+                name: "Safari",
+                payload: .browserWindow(BrowserWindow(tabs: ["https://example.com"]))
+            )
+        ])
+
+        let report = await launcher.open(project, placementWorkspace: "6")
+
+        XCTAssertEqual(windowController.moves, [.init(id: 42, workspace: "6")])
+        XCTAssertEqual(workspaceController.activations, ["6"])
+        XCTAssertEqual(
+            report.results.first?.outcome,
+            .failed(
+                "The window opened, but WorkBench could not place it: "
+                    + "AeroSpace did not respond before the operation timed out."
+            )
+        )
+    }
+
+    func testSnapshotFailureSkipsUnsafeLaunchAndContinues() async {
+        let recorder = InvocationRecorder()
+        let windowController = AeroSpaceWindowControllerStub(listResults: [
+            .failure(.timedOut),
+            .success([]),
+            .success([aeroSpaceWindow(id: 44, bundleIdentifier: "com.apple.finder", workspace: "C")])
+        ])
+        let launcher = ProjectLauncher(
+            browserLauncher: BrowserLauncherStub(recorder: recorder),
+            finderLauncher: FinderLauncherStub(recorder: recorder),
+            aeroSpaceWindowController: windowController,
+            aeroSpaceWorkspaceController: AeroSpaceWorkspaceControllerStub(),
+            windowDetectionInterval: .zero
+        )
+        let project = Project(name: "Placed", resources: [
+            Resource(
+                name: "Safari",
+                payload: .browserWindow(BrowserWindow(tabs: ["https://example.com"]))
+            ),
+            Resource(name: "Finder", payload: .finderWindow(FinderWindow(folder: "~/")))
+        ])
+
+        let report = await launcher.open(project, placementWorkspace: "6")
+
+        XCTAssertEqual(recorder.applications, ["Finder"])
+        XCTAssertEqual(windowController.moves, [.init(id: 44, workspace: "6")])
+        XCTAssertEqual(
+            report.results.first?.outcome,
+            .failed(
+                "WorkBench could not prepare window placement: "
+                    + "AeroSpace did not respond before the operation timed out."
+            )
+        )
+        XCTAssertEqual(report.results.last?.outcome, .succeeded)
     }
 
     func testTerminalRejectsMissingDirectoryWithoutExecutingScript() {
@@ -135,6 +321,73 @@ final class ProjectLauncherTests: XCTestCase {
 @MainActor
 private final class InvocationRecorder {
     var applications: [String] = []
+}
+
+@MainActor
+private final class AeroSpaceWindowControllerStub: AeroSpaceWindowControlling {
+    struct Move: Equatable {
+        let id: Int
+        let workspace: String
+    }
+
+    private var listResults: [Result<[AeroSpaceWindow], AeroSpaceClientError>]
+    var moveResult: Result<Void, AeroSpaceClientError>
+    private(set) var listBundleIdentifiers: [String] = []
+    private(set) var moves: [Move] = []
+
+    init(
+        listResults: [Result<[AeroSpaceWindow], AeroSpaceClientError>],
+        moveResult: Result<Void, AeroSpaceClientError> = .success(())
+    ) {
+        self.listResults = listResults
+        self.moveResult = moveResult
+    }
+
+    func listWindows(
+        forApplicationBundleIdentifier bundleIdentifier: String
+    ) async -> Result<[AeroSpaceWindow], AeroSpaceClientError> {
+        listBundleIdentifiers.append(bundleIdentifier)
+        return listResults.removeFirst()
+    }
+
+    func moveWindow(
+        id: Int,
+        toWorkspace workspace: String
+    ) async -> Result<Void, AeroSpaceClientError> {
+        moves.append(Move(id: id, workspace: workspace))
+        return moveResult
+    }
+}
+
+@MainActor
+private final class AeroSpaceWorkspaceControllerStub: AeroSpaceControlling {
+    var activationResult: Result<Void, AeroSpaceClientError>
+    private(set) var activations: [String] = []
+
+    init(activationResult: Result<Void, AeroSpaceClientError> = .success(())) {
+        self.activationResult = activationResult
+    }
+
+    func listWorkspaces() async -> Result<[String], AeroSpaceClientError> { .success([]) }
+
+    func activateWorkspace(named workspace: String) async -> Result<Void, AeroSpaceClientError> {
+        activations.append(workspace)
+        return activationResult
+    }
+}
+
+private func aeroSpaceWindow(
+    id: Int,
+    bundleIdentifier: String,
+    workspace: String
+) -> AeroSpaceWindow {
+    AeroSpaceWindow(
+        id: id,
+        applicationBundleIdentifier: bundleIdentifier,
+        processIdentifier: 1234,
+        workspace: workspace,
+        title: "Window \(id)"
+    )
 }
 
 @MainActor

@@ -104,7 +104,14 @@ final class WorkBenchApplicationModelTests: XCTestCase {
 
         await model.openSelectedProject()
 
-        XCTAssertEqual(recorder.events, ["workspace:2", "resource"])
+        XCTAssertEqual(recorder.events, [
+            "workspace:2",
+            "windows:com.apple.Safari",
+            "resource",
+            "windows:com.apple.Safari",
+            "move:42:2",
+            "workspace:2"
+        ])
         XCTAssertNil(model.pendingLaunchPlacementFailure)
     }
 
@@ -119,7 +126,7 @@ final class WorkBenchApplicationModelTests: XCTestCase {
         XCTAssertTrue(recorder.events.isEmpty)
         XCTAssertEqual(model.pendingLaunchPlacementFailure?.reason, .integrationDisabled)
 
-        model.openPendingProjectWithoutPlacement()
+        await model.openPendingProjectWithoutPlacement()
 
         XCTAssertEqual(recorder.events, ["resource"])
         XCTAssertNil(model.pendingLaunchPlacementFailure)
@@ -165,10 +172,15 @@ final class WorkBenchApplicationModelTests: XCTestCase {
         recorder: LaunchPreflightRecorder,
         integrationEnabled: Bool
     ) throws -> WorkBenchApplicationModel {
-        WorkBenchApplicationModel(
+        let aeroSpaceController = RecordingAeroSpaceController(recorder: recorder)
+        return WorkBenchApplicationModel(
             workflow: try makeWorkflow(projects: [project]),
-            launcher: ProjectLauncher(browserLauncher: RecordingBrowserLauncher(recorder: recorder)),
-            aeroSpaceController: RecordingAeroSpaceController(recorder: recorder),
+            launcher: ProjectLauncher(
+                browserLauncher: RecordingBrowserLauncher(recorder: recorder),
+                aeroSpaceWindowController: RecordingAeroSpaceWindowController(recorder: recorder),
+                aeroSpaceWorkspaceController: aeroSpaceController
+            ),
+            aeroSpaceController: aeroSpaceController,
             aeroSpaceSettingsStore: AeroSpaceSettingsStoreStub(isEnabled: integrationEnabled)
         )
     }
@@ -205,6 +217,41 @@ private struct RecordingAeroSpaceController: AeroSpaceControlling {
     func activateWorkspace(named workspace: String) async -> Result<Void, AeroSpaceClientError> {
         recorder.events.append("workspace:\(workspace)")
         return recorder.activationError.map(Result.failure) ?? .success(())
+    }
+}
+
+@MainActor
+private final class RecordingAeroSpaceWindowController: AeroSpaceWindowControlling {
+    let recorder: LaunchPreflightRecorder
+    private var listCount = 0
+
+    init(recorder: LaunchPreflightRecorder) {
+        self.recorder = recorder
+    }
+
+    func listWindows(
+        forApplicationBundleIdentifier bundleIdentifier: String
+    ) async -> Result<[AeroSpaceWindow], AeroSpaceClientError> {
+        recorder.events.append("windows:\(bundleIdentifier)")
+        defer { listCount += 1 }
+        if listCount == 0 { return .success([]) }
+        return .success([
+            AeroSpaceWindow(
+                id: 42,
+                applicationBundleIdentifier: bundleIdentifier,
+                processIdentifier: 1234,
+                workspace: "C",
+                title: "Created"
+            )
+        ])
+    }
+
+    func moveWindow(
+        id: Int,
+        toWorkspace workspace: String
+    ) async -> Result<Void, AeroSpaceClientError> {
+        recorder.events.append("move:\(id):\(workspace)")
+        return .success(())
     }
 }
 

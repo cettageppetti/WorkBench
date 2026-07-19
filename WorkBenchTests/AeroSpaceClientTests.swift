@@ -55,6 +55,135 @@ final class AeroSpaceClientTests: XCTestCase {
         ])
     }
 
+    func testListsApplicationWindowsFromExplicitTypedJSONFields() async throws {
+        let runner = AeroSpaceCommandRunnerStub(responses: [
+            .success(commandResult(output: """
+            [
+              {
+                "window-id": 42,
+                "app-bundle-id": "com.google.Chrome",
+                "app-pid": 1234,
+                "workspace": "C",
+                "window-title": "Example"
+              }
+            ]
+            """))
+        ])
+        let client = makeClient(runner: runner)
+
+        let windows = try await client
+            .listWindows(forApplicationBundleIdentifier: "com.google.Chrome")
+            .get()
+
+        XCTAssertEqual(windows, [
+            AeroSpaceWindow(
+                id: 42,
+                applicationBundleIdentifier: "com.google.Chrome",
+                processIdentifier: 1234,
+                workspace: "C",
+                title: "Example"
+            )
+        ])
+        XCTAssertEqual(runner.invocations.map(\.arguments), [[
+            "list-windows",
+            "--monitor", "all",
+            "--app-bundle-id", "com.google.Chrome",
+            "--format", "%{window-id} %{app-bundle-id} %{app-pid} %{workspace} %{window-title}",
+            "--json"
+        ]])
+    }
+
+    func testMovesExactWindowAndConfirmsItsWorkspace() async throws {
+        let runner = AeroSpaceCommandRunnerStub(responses: [
+            .success(commandResult()),
+            .success(commandResult(output: """
+            [
+              {
+                "window-id": 41,
+                "app-bundle-id": "com.google.Chrome",
+                "app-pid": 1234,
+                "workspace": "C",
+                "window-title": "Existing"
+              },
+              {
+                "window-id": 42,
+                "app-bundle-id": "com.google.Chrome",
+                "app-pid": 1234,
+                "workspace": "6",
+                "window-title": "Created"
+              }
+            ]
+            """))
+        ])
+        let client = makeClient(runner: runner)
+
+        try await client.moveWindow(id: 42, toWorkspace: "6").get()
+
+        XCTAssertEqual(runner.invocations.map(\.arguments), [
+            ["move-node-to-workspace", "--window-id", "42", "--", "6"],
+            [
+                "list-windows",
+                "--monitor", "all",
+                "--format", "%{window-id} %{app-bundle-id} %{app-pid} %{workspace} %{window-title}",
+                "--json"
+            ]
+        ])
+    }
+
+    func testMoveReportsMissingWindowAndWorkspaceMismatch() async {
+        let missingRunner = AeroSpaceCommandRunnerStub(responses: [
+            .success(commandResult()),
+            .success(commandResult(output: "[]"))
+        ])
+        let missingResult = await makeClient(runner: missingRunner)
+            .moveWindow(id: 42, toWorkspace: "6")
+        XCTAssertEqual(missingResult.failure, .windowNotFound(42))
+
+        let mismatchRunner = AeroSpaceCommandRunnerStub(responses: [
+            .success(commandResult()),
+            .success(commandResult(output: """
+            [
+              {
+                "window-id": 42,
+                "app-bundle-id": "com.google.Chrome",
+                "app-pid": 1234,
+                "workspace": "C",
+                "window-title": "Created"
+              }
+            ]
+            """))
+        ])
+        let mismatchResult = await makeClient(runner: mismatchRunner)
+            .moveWindow(id: 42, toWorkspace: "6")
+        XCTAssertEqual(
+            mismatchResult.failure,
+            .windowNotInWorkspace(id: 42, expected: "6", actual: "C")
+        )
+    }
+
+    func testRejectsInvalidWindowQueryAndMoveInputsWithoutRunningCommands() async {
+        let runner = AeroSpaceCommandRunnerStub(responses: [])
+        let client = makeClient(runner: runner)
+
+        let listResult = await client.listWindows(forApplicationBundleIdentifier: " \n")
+        let moveResult = await client.moveWindow(id: 0, toWorkspace: "6")
+
+        XCTAssertEqual(listResult.failure, .invalidApplicationBundleIdentifier)
+        XCTAssertEqual(moveResult.failure, .invalidWindowIdentifier(0))
+        XCTAssertTrue(runner.invocations.isEmpty)
+    }
+
+    func testReportsMalformedWindowJSON() async {
+        let runner = AeroSpaceCommandRunnerStub(responses: [
+            .success(commandResult(output: #"[{"window-id":"not-a-number"}]"#))
+        ])
+
+        let result = await makeClient(runner: runner)
+            .listWindows(forApplicationBundleIdentifier: "com.apple.Safari")
+
+        XCTAssertEqual(result.failure, .invalidResponse)
+    }
+
     func testReportsUnavailableExecutableWithoutRunningCommand() async {
         let runner = AeroSpaceCommandRunnerStub(responses: [])
         let client = AeroSpaceClient(

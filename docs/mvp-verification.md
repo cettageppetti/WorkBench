@@ -27,8 +27,13 @@ The hosted `WorkBenchTests` target covers:
   default and persistence independently of Project JSON;
 - typed AeroSpace workspace discovery and activation arguments, command
   failures, timeouts, JSON parsing, and post-activation focus confirmation;
+- typed AeroSpace application-window queries, exact window-ID movement,
+  destination confirmation, and invalid or disappeared-window failures;
 - launch-preflight ordering, destination-free bypass, disabled and failed
   placement recovery, unknown destinations, and captured fallback launches;
+- per-Resource window snapshots, unique correlation, bounded detection,
+  ambiguous-candidate safety, movement failure reporting, workspace restoration,
+  and continuation with later Resources;
 - Settings enablement and discovery presentation plus Project destination
   editing, manual workspace persistence, and deterministic UI isolation;
 - launch validation, sequential ordering, continuation after failure, missing
@@ -36,7 +41,7 @@ The hosted `WorkBenchTests` target covers:
 - application-model coordination for creation, Resource commands, unsaved
   selection changes, and consolidated invalid-launch reports.
 
-The signed `xcodebuild test` command passes all 71 unit tests and all sixteen
+The signed `xcodebuild test` command passes all 81 unit tests and all sixteen
 macOS UI tests. The build emits the expected metadata-extraction warning because
 WorkBench does not link App Intents. Xcode may also report debugger-version
 store noise or fail to collect a post-test OS log archive because
@@ -95,7 +100,7 @@ repeated during final acceptance verification.
 
 ## Verification still required
 
-The signed unsandboxed suite passes all 71 unit tests and all 16 UI tests. Save
+The signed unsandboxed suite passes all 81 unit tests and all 16 UI tests. Save
 and Open verification uses stable File commands rather than assuming macOS has
 kept trailing toolbar controls outside its overflow menu. The standalone signed
 app build succeeds and contains no App Sandbox entitlement.

@@ -72,7 +72,9 @@ struct ContentView: View {
                 set: { if !$0 { model.cancelPendingProjectLaunch() } }
             )
         ) {
-            Button("Open Without Placement", action: model.openPendingProjectWithoutPlacement)
+            Button("Open Without Placement") {
+                Task { await model.openPendingProjectWithoutPlacement() }
+            }
                 .accessibilityIdentifier("open-without-placement-button")
             Button("Cancel", role: .cancel, action: model.cancelPendingProjectLaunch)
         } message: {

@@ -105,7 +105,7 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
         guard !isOpeningProject, let project = workflow?.draft else { return }
         let validationIssues = ProjectValidator.validate(project)
         guard validationIssues.isEmpty else {
-            presentLaunchReport(launcher.open(project))
+            presentLaunchReport(await launcher.open(project))
             return
         }
 
@@ -113,7 +113,7 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
         defer { isOpeningProject = false }
         switch project.launchDestination {
         case nil:
-            presentLaunchReport(launcher.open(project))
+            presentLaunchReport(await launcher.open(project))
         case let .aeroSpaceWorkspace(workspace):
             guard aeroSpaceSettingsStore.load().isEnabled else {
                 pendingLaunchPlacementFailure = PendingLaunchPlacementFailure(
@@ -124,7 +124,9 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
             }
             switch await aeroSpaceController.activateWorkspace(named: workspace) {
             case .success:
-                presentLaunchReport(launcher.open(project))
+                presentLaunchReport(
+                    await launcher.open(project, placementWorkspace: workspace)
+                )
             case let .failure(error):
                 pendingLaunchPlacementFailure = PendingLaunchPlacementFailure(
                     project: project,
@@ -139,10 +141,10 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
         }
     }
 
-    func openPendingProjectWithoutPlacement() {
+    func openPendingProjectWithoutPlacement() async {
         guard let failure = pendingLaunchPlacementFailure else { return }
         pendingLaunchPlacementFailure = nil
-        presentLaunchReport(launcher.open(failure.project))
+        presentLaunchReport(await launcher.open(failure.project))
     }
 
     func cancelPendingProjectLaunch() {

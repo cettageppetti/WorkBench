@@ -205,20 +205,35 @@ final class ProjectLauncher {
     private let chromeLauncher: any BrowserLaunching
     private let terminalLauncher: any TerminalLaunching
     private let finderLauncher: any FinderLaunching
+    private let aeroSpaceWindowController: any AeroSpaceWindowControlling
+    private let aeroSpaceWorkspaceController: any AeroSpaceControlling
+    private let windowDetectionAttempts: Int
+    private let windowDetectionInterval: Duration
 
     init(
         browserLauncher: any BrowserLaunching = SafariLauncher(),
         chromeLauncher: any BrowserLaunching = ChromeLauncher(),
         terminalLauncher: any TerminalLaunching = TerminalLauncher(),
-        finderLauncher: any FinderLaunching = FinderLauncher()
+        finderLauncher: any FinderLaunching = FinderLauncher(),
+        aeroSpaceWindowController: any AeroSpaceWindowControlling = AeroSpaceClient(),
+        aeroSpaceWorkspaceController: any AeroSpaceControlling = AeroSpaceClient(),
+        windowDetectionAttempts: Int = 20,
+        windowDetectionInterval: Duration = .milliseconds(50)
     ) {
         self.browserLauncher = browserLauncher
         self.chromeLauncher = chromeLauncher
         self.terminalLauncher = terminalLauncher
         self.finderLauncher = finderLauncher
+        self.aeroSpaceWindowController = aeroSpaceWindowController
+        self.aeroSpaceWorkspaceController = aeroSpaceWorkspaceController
+        self.windowDetectionAttempts = max(1, windowDetectionAttempts)
+        self.windowDetectionInterval = windowDetectionInterval
     }
 
-    func open(_ project: Project) -> LaunchReport {
+    func open(
+        _ project: Project,
+        placementWorkspace: String? = nil
+    ) async -> LaunchReport {
         let validationIssues = ProjectValidator.validate(project)
         guard validationIssues.isEmpty else {
             return LaunchReport(
@@ -231,19 +246,7 @@ final class ProjectLauncher {
 
         var results: [ResourceLaunchResult] = []
         for resource in project.resources {
-            let outcome: ResourceLaunchOutcome
-            switch resource.payload {
-            case let .browserWindow(browser):
-                outcome = launchOutcome(for: browserLauncher.open(browser))
-            case let .chromeWindow(browser):
-                outcome = launchOutcome(for: chromeLauncher.open(browser))
-            case let .terminalSession(terminal):
-                outcome = launchOutcome(for: terminalLauncher.open(terminal))
-            case let .finderWindow(finder):
-                outcome = launchOutcome(for: finderLauncher.open(finder))
-            case let .unsupported(type, _):
-                outcome = .skipped("Resource type \"\(type)\" is unsupported.")
-            }
+            let outcome = await launch(resource, placementWorkspace: placementWorkspace)
             results.append(
                 ResourceLaunchResult(
                     resourceID: resource.id,
@@ -261,8 +264,150 @@ final class ProjectLauncher {
         )
     }
 
+    private func launch(
+        _ resource: Resource,
+        placementWorkspace: String?
+    ) async -> ResourceLaunchOutcome {
+        guard let placementWorkspace else { return launchUnplaced(resource) }
+        guard let bundleIdentifier = applicationBundleIdentifier(for: resource) else {
+            return launchUnplaced(resource)
+        }
+
+        let beforeResult = await aeroSpaceWindowController
+            .listWindows(forApplicationBundleIdentifier: bundleIdentifier)
+        guard case let .success(beforeWindows) = beforeResult else {
+            let error = beforeResult.failure ?? .invalidResponse
+            return .failed("WorkBench could not prepare window placement: \(error.recoveryMessage)")
+        }
+
+        let launchOutcome = launchUnplaced(resource)
+        guard launchOutcome == .succeeded else { return launchOutcome }
+
+        switch await detectCreatedWindow(
+            bundleIdentifier: bundleIdentifier,
+            previousIDs: Set(beforeWindows.map(\.id))
+        ) {
+        case let .success(window):
+            switch await aeroSpaceWindowController.moveWindow(
+                id: window.id,
+                toWorkspace: placementWorkspace
+            ) {
+            case .success:
+                break
+            case let .failure(error):
+                return await placementFailureAfterWindowOpened(
+                    error.recoveryMessage,
+                    workspace: placementWorkspace
+                )
+            }
+        case let .failure(error):
+            return await placementFailureAfterWindowOpened(
+                error.message,
+                workspace: placementWorkspace
+            )
+        }
+
+        switch await aeroSpaceWorkspaceController.activateWorkspace(named: placementWorkspace) {
+        case .success:
+            return .succeeded
+        case let .failure(error):
+            return .failed(
+                "The window was placed, but WorkBench could not restore the Project workspace: "
+                    + error.recoveryMessage
+            )
+        }
+    }
+
+    private func placementFailureAfterWindowOpened(
+        _ message: String,
+        workspace: String
+    ) async -> ResourceLaunchOutcome {
+        let placementMessage = "The window opened, but WorkBench could not place it: \(message)"
+        switch await aeroSpaceWorkspaceController.activateWorkspace(named: workspace) {
+        case .success:
+            return .failed(placementMessage)
+        case let .failure(error):
+            return .failed(
+                placementMessage
+                    + " WorkBench also could not restore the Project workspace: "
+                    + error.recoveryMessage
+            )
+        }
+    }
+
+    private func launchUnplaced(_ resource: Resource) -> ResourceLaunchOutcome {
+        switch resource.payload {
+        case let .browserWindow(browser):
+            launchOutcome(for: browserLauncher.open(browser))
+        case let .chromeWindow(browser):
+            launchOutcome(for: chromeLauncher.open(browser))
+        case let .terminalSession(terminal):
+            launchOutcome(for: terminalLauncher.open(terminal))
+        case let .finderWindow(finder):
+            launchOutcome(for: finderLauncher.open(finder))
+        case let .unsupported(type, _):
+            .skipped("Resource type \"\(type)\" is unsupported.")
+        }
+    }
+
+    private func detectCreatedWindow(
+        bundleIdentifier: String,
+        previousIDs: Set<Int>
+    ) async -> Result<AeroSpaceWindow, WindowDetectionError> {
+        for attempt in 0..<windowDetectionAttempts {
+            switch await aeroSpaceWindowController
+                .listWindows(forApplicationBundleIdentifier: bundleIdentifier) {
+            case let .success(windows):
+                let candidates = windows.filter { !previousIDs.contains($0.id) }
+                if candidates.count == 1, let window = candidates.first {
+                    return .success(window)
+                }
+                if candidates.count > 1 {
+                    let identifiers = candidates.map(\.id).sorted().map(String.init).joined(separator: ", ")
+                    return .failure(
+                        WindowDetectionError(
+                            message: "AeroSpace reported multiple new windows (\(identifiers)); no window was moved."
+                        )
+                    )
+                }
+            case let .failure(error):
+                return .failure(WindowDetectionError(message: error.recoveryMessage))
+            }
+
+            if attempt + 1 < windowDetectionAttempts {
+                try? await Task.sleep(for: windowDetectionInterval)
+            }
+        }
+        return .failure(
+            WindowDetectionError(
+                message: "AeroSpace did not detect the new application window before the timeout."
+            )
+        )
+    }
+
+    private func applicationBundleIdentifier(for resource: Resource) -> String? {
+        switch resource.payload {
+        case .browserWindow: "com.apple.Safari"
+        case .chromeWindow: "com.google.Chrome"
+        case .terminalSession: "com.apple.Terminal"
+        case .finderWindow: "com.apple.finder"
+        case .unsupported: nil
+        }
+    }
+
     private func launchOutcome(for errorMessage: String?) -> ResourceLaunchOutcome {
         errorMessage.map(ResourceLaunchOutcome.failed) ?? .succeeded
+    }
+}
+
+private struct WindowDetectionError: Error {
+    let message: String
+}
+
+private extension Result {
+    var failure: Failure? {
+        guard case let .failure(error) = self else { return nil }
+        return error
     }
 }
 
