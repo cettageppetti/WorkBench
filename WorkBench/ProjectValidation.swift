@@ -91,6 +91,18 @@ enum ProjectValidator {
                 validatePath(terminal.workingDirectory, field: "\(prefix).workingDirectory", into: &issues)
             case let .finderWindow(finder):
                 validatePath(finder.folder, field: "\(prefix).folder", into: &issues)
+            case let .application(application):
+                if application.bundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    issues.append(
+                        .init(field: "\(prefix).bundleIdentifier", message: "Application bundle identifier is required.")
+                    )
+                }
+                let path = application.lastKnownPath.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !path.hasPrefix("/") || URL(filePath: path).pathExtension.lowercased() != "app" {
+                    issues.append(
+                        .init(field: "\(prefix).lastKnownPath", message: "Choose a macOS application bundle.")
+                    )
+                }
             case .unsupported:
                 break
             }

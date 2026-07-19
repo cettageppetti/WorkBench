@@ -46,6 +46,29 @@ final class WorkBenchApplicationModelTests: XCTestCase {
         XCTAssertEqual(workflow.draft?.resources.first?.type, "chrome-window")
     }
 
+    func testApplicationSelectionAddsGenericApplicationResource() throws {
+        let workflow = try makeWorkflow(projects: [Project(name: "Project", resources: [])])
+        let selection = SelectedApplication(
+            displayName: "Example Editor",
+            resource: ApplicationResource(
+                bundleIdentifier: "com.example.Editor",
+                lastKnownPath: "/Applications/Example Editor.app"
+            )
+        )
+        let model = WorkBenchApplicationModel(
+            workflow: workflow,
+            applicationSelector: ApplicationSelectorStub(selection: selection)
+        )
+
+        model.chooseApplicationResource()
+
+        XCTAssertEqual(workflow.draft?.resources.first?.name, "Example Editor")
+        XCTAssertEqual(workflow.draft?.resources.first?.type, "application")
+        XCTAssertEqual(workflow.draft?.resources.first?.payload, .application(selection.resource))
+        XCTAssertEqual(model.selectedResourceID, workflow.draft?.resources.first?.id)
+        XCTAssertTrue(workflow.isDirty)
+    }
+
     func testDirtyProjectSelectionPresentsSharedUnsavedDialog() throws {
         let first = Project(name: "First", resources: [])
         let second = Project(name: "Second", resources: [])
@@ -299,4 +322,11 @@ private final class ApplicationModelRepositoryStub: ProjectRepositorying {
     func delete(_ project: Project) throws {
         projects.removeAll { $0.id == project.id }
     }
+}
+
+@MainActor
+private struct ApplicationSelectorStub: ApplicationSelecting {
+    let selection: SelectedApplication?
+
+    func selectApplication() throws -> SelectedApplication? { selection }
 }

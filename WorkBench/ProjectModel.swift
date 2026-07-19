@@ -171,11 +171,17 @@ struct FinderWindow: Codable, Equatable {
     var folder: String
 }
 
+struct ApplicationResource: Codable, Equatable {
+    var bundleIdentifier: String
+    var lastKnownPath: String
+}
+
 enum ResourcePayload: Equatable {
     case browserWindow(BrowserWindow)
     case chromeWindow(BrowserWindow)
     case terminalSession(TerminalSession)
     case finderWindow(FinderWindow)
+    case application(ApplicationResource)
     case unsupported(type: String, rawObject: [String: JSONValue])
 }
 
@@ -194,6 +200,8 @@ struct Resource: Codable, Equatable {
             "terminal-session"
         case .finderWindow:
             "finder-window"
+        case .application:
+            "application"
         case let .unsupported(type, _):
             type
         }
@@ -249,6 +257,13 @@ struct Resource: Codable, Equatable {
             payload = .finderWindow(
                 FinderWindow(folder: try common.decode(String.self, forKey: .folder))
             )
+        case "application":
+            payload = .application(
+                ApplicationResource(
+                    bundleIdentifier: try common.decode(String.self, forKey: .bundleIdentifier),
+                    lastKnownPath: try common.decode(String.self, forKey: .lastKnownPath)
+                )
+            )
         default:
             payload = .unsupported(type: type, rawObject: object)
         }
@@ -274,6 +289,9 @@ struct Resource: Codable, Equatable {
             try container.encode(terminal.workingDirectory, forKey: .workingDirectory)
         case let .finderWindow(finder):
             try container.encode(finder.folder, forKey: .folder)
+        case let .application(application):
+            try container.encode(application.bundleIdentifier, forKey: .bundleIdentifier)
+            try container.encode(application.lastKnownPath, forKey: .lastKnownPath)
         case .unsupported:
             break
         }
@@ -286,6 +304,8 @@ struct Resource: Codable, Equatable {
         case tabs
         case workingDirectory
         case folder
+        case bundleIdentifier
+        case lastKnownPath
     }
 }
 

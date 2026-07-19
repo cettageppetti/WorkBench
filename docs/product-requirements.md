@@ -89,7 +89,13 @@ The order shown in the Resource list is the saved order and the launch order.
 
 - The user shall be able to add, select, edit, remove, and reorder Resources.
 - Resource order shall be changed by drag and drop and persisted on Save.
-- WorkBench shall offer Safari Window, Chrome Window, Terminal Session, and Finder Window Resource types.
+- WorkBench shall offer Safari Window, Chrome Window, Terminal Session, Finder
+  Window, and generic Application Resource types.
+- The user shall select a generic Application Resource through a standard
+  macOS application picker. WorkBench shall persist its bundle identifier as
+  primary identity and its selected path as a fallback location.
+- Generic Application Resources shall use the application's normal macOS
+  launch behavior; they do not promise to create a new window.
 - Removing a Resource modifies only the in-memory draft until the Project is saved.
 
 ### Explicit save and unsaved changes
@@ -133,6 +139,8 @@ The order shown in the Resource list is the saved order and the launch order.
 - WorkBench shall wait for each Resource launch attempt to complete or fail before starting the next attempt.
 - Failure of one Resource shall not prevent attempts to launch later supported Resources.
 - Unsupported Resources shall be skipped and included in the result summary.
+- A missing generic application shall fail only that Resource and shall not
+  prevent later Resources from launching.
 - After all Resources have been attempted, WorkBench shall present a consolidated summary when any Resource failed or was skipped.
 - Opening the same Project multiple times shall create another workspace instance; WorkBench shall not search for or reuse existing windows.
 
@@ -211,9 +219,10 @@ The order shown in the Resource list is the saved order and the launch order.
 
 - Capturing the current workspace
 - Detecting or reusing existing application windows
-- Per-window sizing or layout beyond assigning created windows to a Project's AeroSpace workspace
-- Browsers other than Safari and Google Chrome
-- Terminals other than Terminal.app
+- AeroSpace tree-layout templates or per-window sizing beyond assigning created
+  windows to a Project's AeroSpace workspace
+- Enhanced browser-window adapters other than Safari and Google Chrome
+- Enhanced terminal-session adapters other than Terminal.app
 - Startup commands
 - Menu-bar status item behavior
 - Live filesystem watching or conflict merging

@@ -18,12 +18,19 @@ The MVP will answer one question: can a user describe a working environment as a
 - Open Chrome windows containing configured tabs.
 - Open Terminal windows at configured directories.
 - Open Finder windows at configured folders.
+- Add any selected macOS application as a baseline Application Resource.
 - Manage Project data under `~/Library/Application Support/WorkBench/Projects`.
 - Offer a one-time, copy-based import from the former user-selected Project folder without deleting the source.
 - Reload the application-managed Project library through **Reload Projects**.
 - Report invalid files and unsupported Resource types without hiding them.
 - Continue opening the remaining Resources when an individual Resource fails.
 - Optionally activate a Project-level AeroSpace workspace before opening Resources.
+
+Application Resources use the selected application's normal macOS launch
+behavior. Safari, Chrome, Terminal, and Finder remain enhanced Resources with
+application-specific configuration. When AeroSpace placement is enabled,
+WorkBench moves a generic application's window only when exactly one new window
+can be identified.
 
 AeroSpace integration is enabled per machine in **WorkBench > Settings**.
 Select **Project Settings** above a Project's Resources to configure its optional

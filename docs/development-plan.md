@@ -230,12 +230,19 @@ Implementation status: the production single-window editor, standard Save/Reload
 
 ## Phase 6: Resource launch coordination
 
-Implementation status: the production coordinator, parameterized adapters, structured report, UI command, and automated tests are complete. A signed build has successfully opened the real Starter Project in Safari, Terminal, and Finder, including creating another window in each application when opened repeatedly. Denied-permission recovery remains a manual verification item.
+Implementation status: the production coordinator, parameterized adapters,
+generic Application Resource, structured report, UI command, and automated
+tests are complete. A signed build has successfully opened the real Starter
+Project in Safari, Terminal, and Finder, including creating another window in
+each application when opened repeatedly. Generic Application Resource signed
+integration and denied-permission recovery remain manual verification items.
 
 ### Outcomes
 
 - Implement the sequential Project launcher and structured LaunchReport.
 - Connect supported Resources to the isolated Safari, Terminal, and Finder adapters proven in Phase 1.
+- Open a user-selected macOS application through its bundle identity and saved
+  fallback path without scripts or a generic command runner.
 - Skip unsupported Resources while continuing known Resources.
 - Continue after path, permission, application, or scripting failures.
 - Present one consolidated result after all launch attempts when any item failed or was skipped.
@@ -287,8 +294,9 @@ Do not pull these items into the MVP without a separate product decision:
 
 - workspace capture;
 - existing-window detection or reuse;
-- window sizing and layout beyond Project workspace placement;
-- additional browsers or terminals beyond Safari, Chrome, and Terminal.app;
+- AeroSpace tree-layout templates, including nested tile or accordion groups;
+- additional enhanced browser or terminal adapters beyond Safari, Chrome, and
+  Terminal.app;
 - Terminal startup commands;
 - live configuration watching or merge conflict handling;
 - import, export, synchronization, or cloud storage;
@@ -296,6 +304,12 @@ Do not pull these items into the MVP without a separate product decision:
 - AI, SSH, or Docker integrations;
 - Project notes; and
 - broad deployment-target support or App Store release work.
+
+Reconsider tree-layout templates only if AeroSpace provides stable structured
+inspection of the complete workspace tree and a deterministic, preferably
+transactional, API for applying a layout to explicit window IDs. WorkBench
+should not maintain an AeroSpace fork or reconstruct arbitrary trees through
+focus-sensitive command sequences for this feature.
 
 ## Definition of done
 

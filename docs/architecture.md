@@ -74,6 +74,7 @@ Resource
     chromeWindow(tabs)
     terminalSession(workingDirectory)
     finderWindow(folder)
+    application(bundleIdentifier, lastKnownPath)
     unsupported(type, rawObject)
 ```
 
@@ -113,7 +114,18 @@ Open Project
   -> return consolidated LaunchReport
 ```
 
-Suggested boundaries are `BrowserLaunching`, `TerminalLaunching`, and `FinderLaunching`. Separate Safari and Chrome adapters conform to `BrowserLaunching`; production adapters communicate with macOS and test doubles return deterministic outcomes.
+Suggested boundaries are `BrowserLaunching`, `TerminalLaunching`,
+`FinderLaunching`, and `ApplicationLaunching`. Separate Safari and Chrome
+adapters conform to `BrowserLaunching`; the generic application adapter asks
+`NSWorkspace` to open the registered application for its bundle identifier and
+falls back to the saved bundle path. Production adapters communicate with macOS
+and test doubles return deterministic outcomes.
+
+Generic Application Resources provide baseline coverage without making
+application-specific window guarantees. Safari, Chrome, Terminal, and Finder
+remain enhanced compiled Resources. A later adapter registry may associate
+additional bundle identifiers with enhanced strategies, but Projects never
+store scripts or executable commands.
 
 Apple Events and scripting details belong inside the adapters. The architecture does not expose scripts as part of the Project model because Projects describe desired state, not implementation steps.
 
@@ -139,6 +151,13 @@ WorkBench. WorkBench never edits AeroSpace configuration. For a Project with an
 explicit destination, however, WorkBench uses the newly created AeroSpace
 window ID to override a global routing rule for that window only. If correlation
 produces zero or multiple candidates, WorkBench must not guess.
+
+Declarative tree-layout templates are a deferred roadmap idea, not part of the
+current integration contract. They should be reconsidered only if upstream
+AeroSpace exposes stable full-tree inspection and deterministic transactional
+layout application for explicit window IDs. WorkBench will not depend on a
+private AeroSpace fork or on fragile focus-relative reconstruction of arbitrary
+container trees.
 
 Projects without a destination do not invoke the integration. If integration is
 disabled or unavailable, stored destinations remain intact. Named native macOS
@@ -212,6 +231,13 @@ The schema should be documented and versioned before persistence code is conside
       "type": "finder-window",
       "name": "Home Folder",
       "folder": "~/"
+    },
+    {
+      "id": "A065714C-FC04-4C30-B9E4-457F02742A1F",
+      "type": "application",
+      "name": "iMovie",
+      "bundleIdentifier": "com.apple.iMovie",
+      "lastKnownPath": "/Applications/iMovie.app"
     }
   ]
 }

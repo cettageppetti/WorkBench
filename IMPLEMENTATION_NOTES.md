@@ -30,6 +30,21 @@ byte, both sources remained in place, and the Projects appeared immediately.
 After quitting and reopening the same build, WorkBench loaded the managed
 library directly without presenting the import choice again.
 
+## Generic Application Resource
+
+The `application` Resource lets the user select any macOS `.app` bundle through
+a standard open panel. It persists the bundle identifier as primary identity
+and the selected absolute path as a fallback without changing schema version 2;
+older WorkBench versions preserve the Resource as unsupported JSON.
+
+`FoundationApplicationLauncher` resolves registered applications through
+`NSWorkspace`, validates a fallback bundle against the stored identifier, and
+opens it with normal macOS behavior. This baseline does not promise a new
+window. For AeroSpace placement, the existing exact-correlation transaction
+uses the stored bundle identifier and moves only one unambiguous new window.
+Zero or multiple new windows are reported and existing windows remain untouched.
+Safari, Chrome, Terminal, and Finder retain their enhanced compiled adapters.
+
 ## Approved AeroSpace launch-destination contract
 
 A Project may optionally name one AeroSpace workspace. WorkBench activates it
@@ -158,7 +173,7 @@ failure, and unknown destination types launch no Resources and retain the
 attempted Project snapshot for explicit **Open Without Placement** or **Cancel**
 recovery. The Open command is disabled while activation is in progress. UI-test
 doubles never contact AeroSpace or move the active workspace. After the Settings
-and editor increment, the complete signed scheme passes all 82 unit tests and
+and editor increment, the complete signed scheme passes all 86 unit tests and
 all 16 UI tests.
 
 ## AeroSpace Settings and Project editor

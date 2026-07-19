@@ -98,6 +98,7 @@ Examples include:
 - Browser Tab
 - Terminal Session
 - Finder Window
+- Application
 - Document
 - Folder
 - Command
@@ -247,6 +248,19 @@ Properties:
 - Name
 - Folder path
 
+## Application
+
+Open or activate a user-selected macOS application using its normal behavior.
+The application bundle identifier is its primary identity and the selected
+bundle path is a fallback. This baseline Resource does not guarantee that the
+application creates a new window. Application-specific configuration remains
+the responsibility of enhanced compiled Resource types.
+
+Properties:
+
+- Name
+- Application bundle
+
 ---
 
 # Explicitly Out of Scope
@@ -255,7 +269,7 @@ Do not implement:
 
 - Workspace capture
 - Window sizing
-- Browsers other than Safari and Google Chrome
+- Enhanced browser-window support beyond Safari and Google Chrome
 - Terminal selection
 - Plugins
 - Variables

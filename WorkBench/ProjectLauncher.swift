@@ -51,6 +51,11 @@ protocol FinderLaunching {
 }
 
 @MainActor
+protocol ApplicationLaunching {
+    func open(_ application: ApplicationResource) async -> String?
+}
+
+@MainActor
 protocol AppleScriptExecuting {
     func execute(source: String) -> String?
 }
@@ -200,11 +205,51 @@ struct FinderLauncher: FinderLaunching {
 }
 
 @MainActor
+struct FoundationApplicationLauncher: ApplicationLaunching {
+    private let workspace: NSWorkspace
+    private let fileManager: FileManager
+
+    init(workspace: NSWorkspace = .shared, fileManager: FileManager = .default) {
+        self.workspace = workspace
+        self.fileManager = fileManager
+    }
+
+    func open(_ application: ApplicationResource) async -> String? {
+        guard let url = applicationURL(for: application) else {
+            return "The application is not installed or its saved location is unavailable."
+        }
+        return await withCheckedContinuation { continuation in
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            workspace.openApplication(at: url, configuration: configuration) { _, error in
+                continuation.resume(returning: error?.localizedDescription)
+            }
+        }
+    }
+
+    private func applicationURL(for application: ApplicationResource) -> URL? {
+        if let registered = workspace.urlForApplication(
+            withBundleIdentifier: application.bundleIdentifier
+        ) {
+            return registered
+        }
+
+        let fallback = URL(filePath: application.lastKnownPath)
+        guard fileManager.fileExists(atPath: fallback.path),
+              Bundle(url: fallback)?.bundleIdentifier == application.bundleIdentifier else {
+            return nil
+        }
+        return fallback
+    }
+}
+
+@MainActor
 final class ProjectLauncher {
     private let browserLauncher: any BrowserLaunching
     private let chromeLauncher: any BrowserLaunching
     private let terminalLauncher: any TerminalLaunching
     private let finderLauncher: any FinderLaunching
+    private let applicationLauncher: any ApplicationLaunching
     private let aeroSpaceWindowController: any AeroSpaceWindowControlling
     private let aeroSpaceWorkspaceController: any AeroSpaceControlling
     private let windowDetectionAttempts: Int
@@ -215,6 +260,7 @@ final class ProjectLauncher {
         chromeLauncher: any BrowserLaunching = ChromeLauncher(),
         terminalLauncher: any TerminalLaunching = TerminalLauncher(),
         finderLauncher: any FinderLaunching = FinderLauncher(),
+        applicationLauncher: any ApplicationLaunching = FoundationApplicationLauncher(),
         aeroSpaceWindowController: any AeroSpaceWindowControlling = AeroSpaceClient(),
         aeroSpaceWorkspaceController: any AeroSpaceControlling = AeroSpaceClient(),
         windowDetectionAttempts: Int = 20,
@@ -224,6 +270,7 @@ final class ProjectLauncher {
         self.chromeLauncher = chromeLauncher
         self.terminalLauncher = terminalLauncher
         self.finderLauncher = finderLauncher
+        self.applicationLauncher = applicationLauncher
         self.aeroSpaceWindowController = aeroSpaceWindowController
         self.aeroSpaceWorkspaceController = aeroSpaceWorkspaceController
         self.windowDetectionAttempts = max(1, windowDetectionAttempts)
@@ -268,9 +315,9 @@ final class ProjectLauncher {
         _ resource: Resource,
         placementWorkspace: String?
     ) async -> ResourceLaunchOutcome {
-        guard let placementWorkspace else { return launchUnplaced(resource) }
+        guard let placementWorkspace else { return await launchUnplaced(resource) }
         guard let bundleIdentifier = applicationBundleIdentifier(for: resource) else {
-            return launchUnplaced(resource)
+            return await launchUnplaced(resource)
         }
 
         let beforeResult = await aeroSpaceWindowController
@@ -280,7 +327,7 @@ final class ProjectLauncher {
             return .failed("WorkBench could not prepare window placement: \(error.recoveryMessage)")
         }
 
-        let launchOutcome = launchUnplaced(resource)
+        let launchOutcome = await launchUnplaced(resource)
         guard launchOutcome == .succeeded else { return launchOutcome }
 
         switch await detectCreatedWindow(
@@ -335,7 +382,7 @@ final class ProjectLauncher {
         }
     }
 
-    private func launchUnplaced(_ resource: Resource) -> ResourceLaunchOutcome {
+    private func launchUnplaced(_ resource: Resource) async -> ResourceLaunchOutcome {
         switch resource.payload {
         case let .browserWindow(browser):
             launchOutcome(for: browserLauncher.open(browser))
@@ -345,6 +392,8 @@ final class ProjectLauncher {
             launchOutcome(for: terminalLauncher.open(terminal))
         case let .finderWindow(finder):
             launchOutcome(for: finderLauncher.open(finder))
+        case let .application(application):
+            launchOutcome(for: await applicationLauncher.open(application))
         case let .unsupported(type, _):
             .skipped("Resource type \"\(type)\" is unsupported.")
         }
@@ -391,6 +440,7 @@ final class ProjectLauncher {
         case .chromeWindow: "com.google.Chrome"
         case .terminalSession: "com.apple.Terminal"
         case .finderWindow: "com.apple.finder"
+        case let .application(application): application.bundleIdentifier
         case .unsupported: nil
         }
     }

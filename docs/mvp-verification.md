@@ -13,7 +13,8 @@ working tree following commit `45bd6ec`.
 The hosted `WorkBenchTests` target covers:
 
 - schema versions 1 and 2, migration only on explicit save, supported and
-  unsupported Resource and launch-destination round trips, stable identifiers
+  unsupported Resource and launch-destination round trips, generic Application
+  Resource identity and validation, stable identifiers
   and filenames, validation, path syntax and login-home expansion;
 - Starter Project contents and Resource order;
 - repository initialization, deterministic loading, visible invalid files,
@@ -30,6 +31,8 @@ The hosted `WorkBenchTests` target covers:
   failures, timeouts, JSON parsing, and post-activation focus confirmation;
 - typed AeroSpace application-window queries, exact window-ID movement,
   destination confirmation, and invalid or disappeared-window failures;
+- generic application selection, default launch dispatch, missing-application
+  failure, and bundle-identifier-based AeroSpace placement;
 - launch-preflight ordering, destination-free bypass, disabled and failed
   placement recovery, unknown destinations, and captured fallback launches;
 - per-Resource window snapshots, unique correlation, bounded detection,
@@ -42,7 +45,7 @@ The hosted `WorkBenchTests` target covers:
 - application-model coordination for creation, Resource commands, unsaved
   selection changes, and consolidated invalid-launch reports.
 
-The signed `xcodebuild test` command passes all 82 unit tests and all sixteen
+The signed `xcodebuild test` command passes all 86 unit tests and all sixteen
 macOS UI tests. The build emits the expected metadata-extraction warning because
 WorkBench does not link App Intents. Xcode may also report debugger-version
 store noise or fail to collect a post-test OS log archive because
@@ -125,7 +128,7 @@ three-tab window in `6`.
 
 ## Verification still required
 
-The signed unsandboxed suite passes all 82 unit tests and all 16 UI tests. Save
+The signed unsandboxed suite passes all 86 unit tests and all 16 UI tests. Save
 and Open verification uses stable File commands rather than assuming macOS has
 kept trailing toolbar controls outside its overflow menu. The standalone signed
 app build succeeds and contains no App Sandbox entitlement.

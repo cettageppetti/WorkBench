@@ -169,6 +169,11 @@ struct ContentView: View {
                         Button("Finder Window") {
                             model.addResource(.finderWindow(FinderWindow(folder: "~/")))
                         }
+                        Divider()
+                        Button("Application…") {
+                            model.chooseApplicationResource()
+                        }
+                        .accessibilityIdentifier("add-application-resource-button")
                     } label: { Label("Add Resource", systemImage: "plus") }
                     Spacer()
                     Button(action: model.removeSelectedResource) {
@@ -329,6 +334,13 @@ struct ContentView: View {
                 finder.folder, resourceID: resource.id,
                 makePayload: { .finderWindow(FinderWindow(folder: $0)) }
             ))
+        case let .application(application):
+            Section("Application") {
+                LabeledContent("Bundle Identifier", value: application.bundleIdentifier)
+                LabeledContent("Last Known Location", value: application.lastKnownPath)
+                Text("WorkBench opens this application using its normal macOS behavior.")
+                    .foregroundStyle(.secondary)
+            }
         case let .unsupported(type, _):
             LabeledContent("Type", value: type)
             Label("This Resource type is unsupported. Its JSON will be preserved.", systemImage: "questionmark.diamond")
@@ -459,6 +471,7 @@ struct ContentView: View {
         case .chromeWindow: "globe"
         case .terminalSession: "terminal"
         case .finderWindow: "folder"
+        case .application: "app"
         case .unsupported: "questionmark.diamond"
         }
     }

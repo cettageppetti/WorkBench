@@ -37,11 +37,23 @@ final class ProjectModelTests: XCTestCase {
                 payload: .chromeWindow(BrowserWindow(tabs: ["https://google.com", "file:///tmp/example"]))
             )
         )
+        project.resources.append(
+            Resource(
+                name: "iMovie",
+                payload: .application(
+                    ApplicationResource(
+                        bundleIdentifier: "com.apple.iMovie",
+                        lastKnownPath: "/Applications/iMovie.app"
+                    )
+                )
+            )
+        )
         let encoded = try encoder.encode(project)
         let decoded = try decoder.decode(Project.self, from: encoded)
 
         XCTAssertEqual(decoded, project)
-        XCTAssertEqual(decoded.resources.last?.type, "chrome-window")
+        XCTAssertEqual(decoded.resources[3].type, "chrome-window")
+        XCTAssertEqual(decoded.resources.last?.type, "application")
     }
 
     func testUnsupportedResourceRoundTripsWithoutDataLoss() throws {
@@ -227,6 +239,12 @@ final class ProjectModelTests: XCTestCase {
                 Resource(
                     name: "Terminal",
                     payload: .terminalSession(TerminalSession(workingDirectory: "relative"))
+                ),
+                Resource(
+                    name: "Invalid Application",
+                    payload: .application(
+                        ApplicationResource(bundleIdentifier: " ", lastKnownPath: "Applications/App")
+                    )
                 )
             ],
             launchDestination: .aeroSpaceWorkspace(" \n")
@@ -246,6 +264,8 @@ final class ProjectModelTests: XCTestCase {
             $0.field == "resources[3].tabs[0]" && $0.message == "Enter a URL Chrome can open."
         })
         XCTAssertTrue(issues.contains { $0.field == "resources[4].workingDirectory" })
+        XCTAssertTrue(issues.contains { $0.field == "resources[5].bundleIdentifier" })
+        XCTAssertTrue(issues.contains { $0.field == "resources[5].lastKnownPath" })
     }
 
     private var encoder: JSONEncoder {

@@ -212,6 +212,7 @@ final class WorkBenchUITests: XCTestCase {
         let addResource = app.descendants(matching: .any)["Add Resource"]
         XCTAssertTrue(addResource.waitForExistence(timeout: 2))
         addResource.click()
+        XCTAssertTrue(app.menuItems["Application…"].waitForExistence(timeout: 2))
         let chromeMenuItem = app.menuItems["Chrome Window"]
         XCTAssertTrue(chromeMenuItem.waitForExistence(timeout: 2))
         chromeMenuItem.click()

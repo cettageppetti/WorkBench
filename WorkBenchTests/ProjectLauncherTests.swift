@@ -61,6 +61,70 @@ final class ProjectLauncherTests: XCTestCase {
         XCTAssertTrue(recorder.applications.isEmpty)
     }
 
+    func testApplicationResourceUsesDefaultLauncher() async {
+        let recorder = InvocationRecorder()
+        let application = ApplicationResource(
+            bundleIdentifier: "com.apple.iMovie",
+            lastKnownPath: "/Applications/iMovie.app"
+        )
+        let launcher = ProjectLauncher(
+            applicationLauncher: ApplicationLauncherStub(recorder: recorder)
+        )
+        let project = Project(name: "Movie", resources: [
+            Resource(name: "iMovie", payload: .application(application))
+        ])
+
+        let report = await launcher.open(project)
+
+        XCTAssertEqual(recorder.applications, ["com.apple.iMovie"])
+        XCTAssertEqual(report.results.map(\.outcome), [.succeeded])
+    }
+
+    func testDefaultApplicationLauncherReportsMissingApplication() async {
+        let identifier = "com.workbench.tests.missing.\(UUID().uuidString)"
+        let application = ApplicationResource(
+            bundleIdentifier: identifier,
+            lastKnownPath: "/Applications/WorkBench Missing \(UUID().uuidString).app"
+        )
+
+        let error = await FoundationApplicationLauncher().open(application)
+
+        XCTAssertEqual(
+            error,
+            "The application is not installed or its saved location is unavailable."
+        )
+    }
+
+    func testApplicationResourceUsesBundleIdentifierForPlacement() async {
+        let recorder = InvocationRecorder()
+        let application = ApplicationResource(
+            bundleIdentifier: "com.example.Editor",
+            lastKnownPath: "/Applications/Editor.app"
+        )
+        let windowController = AeroSpaceWindowControllerStub(listResults: [
+            .success([]),
+            .success([aeroSpaceWindow(id: 81, bundleIdentifier: application.bundleIdentifier, workspace: "C")])
+        ])
+        let launcher = ProjectLauncher(
+            applicationLauncher: ApplicationLauncherStub(recorder: recorder),
+            aeroSpaceWindowController: windowController,
+            aeroSpaceWorkspaceController: AeroSpaceWorkspaceControllerStub(),
+            windowDetectionInterval: .zero
+        )
+        let project = Project(name: "Editor", resources: [
+            Resource(name: "Editor", payload: .application(application))
+        ])
+
+        let report = await launcher.open(project, placementWorkspace: "6")
+
+        XCTAssertEqual(recorder.applications, [application.bundleIdentifier])
+        XCTAssertEqual(windowController.listBundleIdentifiers, [
+            application.bundleIdentifier, application.bundleIdentifier
+        ])
+        XCTAssertEqual(windowController.moves, [.init(id: 81, workspace: "6")])
+        XCTAssertEqual(report.results.map(\.outcome), [.succeeded])
+    }
+
     func testPlacedResourceSnapshotsCreatesMovesConfirmsAndRestoresWorkspace() async {
         let recorder = InvocationRecorder()
         let windowController = AeroSpaceWindowControllerStub(listResults: [
@@ -440,6 +504,22 @@ private struct FinderLauncherStub: FinderLaunching {
 
     func open(_ finder: FinderWindow) -> String? {
         recorder.applications.append("Finder")
+        return error
+    }
+}
+
+@MainActor
+private struct ApplicationLauncherStub: ApplicationLaunching {
+    let recorder: InvocationRecorder
+    var error: String?
+
+    init(recorder: InvocationRecorder, error: String? = nil) {
+        self.recorder = recorder
+        self.error = error
+    }
+
+    func open(_ application: ApplicationResource) async -> String? {
+        recorder.applications.append(application.bundleIdentifier)
         return error
     }
 }

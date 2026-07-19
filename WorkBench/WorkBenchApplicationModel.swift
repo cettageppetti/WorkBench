@@ -1,6 +1,53 @@
 import AppKit
 import Observation
 import SwiftUI
+import UniformTypeIdentifiers
+
+struct SelectedApplication: Equatable {
+    let displayName: String
+    let resource: ApplicationResource
+}
+
+@MainActor
+protocol ApplicationSelecting {
+    func selectApplication() throws -> SelectedApplication?
+}
+
+enum ApplicationSelectionError: LocalizedError {
+    case invalidBundle
+
+    var errorDescription: String? {
+        "The selected item is not a macOS application with a bundle identifier."
+    }
+}
+
+@MainActor
+struct FoundationApplicationSelector: ApplicationSelecting {
+    func selectApplication() throws -> SelectedApplication? {
+        let panel = NSOpenPanel()
+        panel.title = "Choose an Application"
+        panel.prompt = "Choose"
+        panel.directoryURL = URL(filePath: "/Applications", directoryHint: .isDirectory)
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        guard panel.runModal() == .OK, let url = panel.url else { return nil }
+        guard let bundle = Bundle(url: url), let bundleIdentifier = bundle.bundleIdentifier else {
+            throw ApplicationSelectionError.invalidBundle
+        }
+        let displayName = (bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+            ?? (bundle.object(forInfoDictionaryKey: "CFBundleName") as? String)
+            ?? url.deletingPathExtension().lastPathComponent
+        return SelectedApplication(
+            displayName: displayName,
+            resource: ApplicationResource(
+                bundleIdentifier: bundleIdentifier,
+                lastKnownPath: url.path
+            )
+        )
+    }
+}
 
 enum LaunchPlacementFailureReason: Equatable {
     case integrationDisabled
@@ -45,6 +92,7 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
     @ObservationIgnored private let launcher: ProjectLauncher
     @ObservationIgnored private let aeroSpaceController: any AeroSpaceControlling
     @ObservationIgnored private let aeroSpaceSettingsStore: any AeroSpaceIntegrationSettingsStoring
+    @ObservationIgnored private let applicationSelector: any ApplicationSelecting
 
     init(
         directoryAccess: ConfigurationDirectoryAccess = ConfigurationDirectoryAccess(),
@@ -52,13 +100,15 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
         launcher: ProjectLauncher = ProjectLauncher(),
         aeroSpaceController: any AeroSpaceControlling = AeroSpaceClient(),
         aeroSpaceSettingsStore: any AeroSpaceIntegrationSettingsStoring =
-            UserDefaultsAeroSpaceIntegrationSettingsStore()
+            UserDefaultsAeroSpaceIntegrationSettingsStore(),
+        applicationSelector: any ApplicationSelecting = FoundationApplicationSelector()
     ) {
         self.directoryAccess = directoryAccess
         self.workflow = workflow
         self.launcher = launcher
         self.aeroSpaceController = aeroSpaceController
         self.aeroSpaceSettingsStore = aeroSpaceSettingsStore
+        self.applicationSelector = applicationSelector
     }
 
     func start() {
@@ -231,11 +281,27 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
         case .chromeWindow: name = "Chrome Window"
         case .terminalSession: name = "Terminal Session"
         case .finderWindow: name = "Finder Window"
+        case let .application(application):
+            name = URL(filePath: application.lastKnownPath).deletingPathExtension().lastPathComponent
         case .unsupported: return
         }
         let resource = Resource(name: name, payload: payload)
         updateDraft { $0.resources.append(resource) }
         selectedResourceID = resource.id
+    }
+
+    func chooseApplicationResource() {
+        do {
+            guard let selection = try applicationSelector.selectApplication() else { return }
+            let resource = Resource(
+                name: selection.displayName,
+                payload: .application(selection.resource)
+            )
+            updateDraft { $0.resources.append(resource) }
+            selectedResourceID = resource.id
+        } catch {
+            present(error)
+        }
     }
 
     func removeSelectedResource() {
