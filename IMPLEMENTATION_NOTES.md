@@ -45,6 +45,12 @@ uses the stored bundle identifier and moves only one unambiguous new window.
 Zero or multiple new windows are reported and existing windows remain untouched.
 Safari, Chrome, Terminal, and Finder retain their enhanced compiled adapters.
 
+A signed real-world acceptance pass selected `/Applications/iMovie.app`, saved
+its `com.apple.iMovie` bundle identity, and opened the Project with AeroSpace
+workspace `8` selected. iMovie activated successfully, its newly created window
+was correlated and placed in workspace `8`, and WorkBench presented no failure
+report.
+
 ## Approved AeroSpace launch-destination contract
 
 A Project may optionally name one AeroSpace workspace. WorkBench activates it

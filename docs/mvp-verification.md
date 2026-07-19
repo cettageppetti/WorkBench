@@ -148,6 +148,12 @@ Support Project library, verified byte-for-byte, and left intact at the source.
 The Projects loaded after import and again after a full quit and relaunch, with
 no repeated migration prompt.
 
+Generic Application Resource integration has passed signed local acceptance
+with iMovie. WorkBench selected `/Applications/iMovie.app`, persisted its
+`com.apple.iMovie` bundle identity, activated it through its default macOS
+behavior, correlated its new window, and placed that window in the Project's
+selected AeroSpace workspace `8` without a failure report.
+
 - Exercise Automation permission denial and revocation independently for
   Safari, Terminal, and Finder. Chrome denial, later-Resource continuation,
   application-specific reporting, and System Settings recovery are verified.
