@@ -125,17 +125,20 @@ connection details belong in application Settings. Resource-level destinations
 are deliberately deferred.
 
 WorkBench owns destination selection, workspace activation before Resource
-launching, bounded failure handling, and the explicit **Open Without Placement**
-recovery action. A destination failure is a preflight failure: no Resource is
-launched until the user elects to proceed without placement. Successful
-activation leaves focus on the destination workspace.
+launching, exact correlation and placement of windows created by that launch,
+bounded failure handling, and the explicit **Open Without Placement** recovery
+action. A destination activation failure is a preflight failure: no Resource is
+launched until the user elects to proceed without placement. After activation,
+each Resource follows a bounded create, detect, move, and confirm transaction.
+An ambiguous correlation moves nothing, is reported for that Resource, and does
+not prevent later Resources from being attempted.
 
 AeroSpace remains authoritative for workspace-to-monitor assignment, layouts,
-keyboard bindings, global application routing, and `on-window-detected` rules.
-WorkBench must not edit AeroSpace configuration or fight a rule that later moves
-a launched window. The first integration activates a workspace before launching;
-exact per-window correlation and `move-node-to-workspace --window-id` are future
-concerns.
+keyboard bindings, unrelated windows, and applications opened outside
+WorkBench. WorkBench never edits AeroSpace configuration. For a Project with an
+explicit destination, however, WorkBench uses the newly created AeroSpace
+window ID to override a global routing rule for that window only. If correlation
+produces zero or multiple candidates, WorkBench must not guess.
 
 Projects without a destination do not invoke the integration. If integration is
 disabled or unavailable, stored destinations remain intact. Named native macOS

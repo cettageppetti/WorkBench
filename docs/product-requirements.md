@@ -145,7 +145,10 @@ The order shown in the Resource list is the saved order and the launch order.
 - WorkBench shall activate the configured AeroSpace workspace and wait for confirmation before launching any Resource.
 - If activation fails, WorkBench shall launch no Resources until the user explicitly chooses **Open Without Placement**; **Cancel** shall leave the Project unopened.
 - Activation failures include disabled integration, unavailable or stopped AeroSpace, connection or executable failure, timeout, and an AeroSpace command failure.
-- After successful activation, focus shall remain on the destination workspace while Resources launch sequentially.
+- After successful activation, WorkBench shall identify each window created by the launch, move that exact window to the destination, and confirm its reported workspace before continuing.
+- WorkBench shall never move a window when the newly created window cannot be identified uniquely.
+- A per-Resource placement failure shall be reported, shall not move an ambiguous candidate, and shall not prevent later Resources from being attempted.
+- WorkBench shall restore focus to the destination workspace while Resources launch sequentially.
 - Opening the same Project again shall reactivate its destination and create another set of Resource windows.
 - AeroSpace integration shall be machine-specific and disabled until the user enables it in Settings.
 - Disabling integration shall not erase destinations stored in Projects.
@@ -154,7 +157,8 @@ The order shown in the Resource list is the saved order and the launch order.
 - Project schema version 2 shall store the optional destination as a typed `launchDestination`; version 1 Projects shall load without a destination and upgrade only when saved.
 - Unknown launch-destination types shall survive load/save without data loss and shall use the placement failure recovery flow rather than being ignored.
 - Machine-specific enablement shall be stored outside Project JSON and shall default to disabled.
-- WorkBench shall not edit AeroSpace configuration or override its workspace-to-monitor assignments, layouts, keyboard bindings, global application routing, or `on-window-detected` rules.
+- WorkBench shall not edit AeroSpace configuration or override its workspace-to-monitor assignments, layouts, or keyboard bindings.
+- For a Project with an explicit destination, WorkBench placement shall override global application routing and `on-window-detected` workspace moves only for windows created by that launch.
 - Named native macOS Spaces shall not be supported; WorkBench shall not use private APIs or UI scripting to manipulate them.
 
 ### Supported Resource behavior
@@ -208,7 +212,7 @@ The order shown in the Resource list is the saved order and the launch order.
 
 - Capturing the current workspace
 - Detecting or reusing existing application windows
-- Per-window placement, sizing, or layout beyond activating a Project's AeroSpace workspace
+- Per-window sizing or layout beyond assigning created windows to a Project's AeroSpace workspace
 - Browsers other than Safari and Google Chrome
 - Terminals other than Terminal.app
 - Startup commands
@@ -216,7 +220,7 @@ The order shown in the Resource list is the saved order and the launch order.
 - Live filesystem watching or conflict merging
 - Project import, export, or synchronization
 - Plugins, variables, dependencies, or conditional execution
-- Resource-specific AeroSpace workspace overrides and exact window-ID correlation
+- Resource-specific AeroSpace workspace overrides
 - AI integration
 - SSH or Docker Resources
 - Project notes

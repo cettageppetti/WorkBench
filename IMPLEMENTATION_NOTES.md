@@ -4,17 +4,41 @@ This document records implementation details and discoveries that may evolve as 
 
 ## Approved AeroSpace launch-destination contract
 
-The first AeroSpace integration increment is Project-level workspace activation,
-not exact per-window placement. A Project may optionally name one AeroSpace
-workspace. WorkBench activates it before launching Resources and leaves focus
-there. Projects without a destination retain current behavior.
+A Project may optionally name one AeroSpace workspace. WorkBench activates it
+before launching Resources and places each window created for that launch in
+the named workspace. Projects without a destination retain current behavior.
 
 Activation failure stops before any Resource opens. The user may explicitly
 choose **Open Without Placement** or **Cancel**. Integration enablement and
 connection details are machine-specific Settings; disabling integration does
-not erase Project destinations. WorkBench never edits AeroSpace configuration,
-does not override its routing rules, and does not target named native macOS
-Spaces.
+not erase Project destinations. WorkBench never edits AeroSpace configuration
+and does not target named native macOS Spaces. For a Project with a destination,
+its explicit placement overrides global AeroSpace routing only for windows
+WorkBench creates during that launch; unrelated windows and normal application
+launches remain governed by AeroSpace configuration.
+
+## AeroSpace per-window correlation spike
+
+A real-window spike against AeroSpace `0.21.2-Beta` validated the approved
+override direction without changing production launch behavior. The typed
+window query must use `list-windows --monitor all` with an explicit JSON format
+requesting `window-id`, `app-bundle-id`, `app-pid`, `workspace`, and
+`window-title`; plain `--json` returns only AeroSpace's default fields.
+
+For Safari, Chrome, Terminal, and Finder, the spike recorded application window
+IDs before launch, created one window, and uniquely identified the set
+difference afterward. Explicit `move-node-to-workspace --window-id <id> -- 6`
+moved only the new window. Existing windows retained their original workspaces.
+The Chrome case began in workspace C because of an active
+`on-window-detected` rule, then remained in workspace 6 after the explicit move,
+confirming that WorkBench can override an immediate global routing rule without
+editing AeroSpace configuration.
+
+Production placement must never guess when the set difference contains zero or
+multiple windows. It must report a placement failure, leave all candidate
+windows untouched, and continue with later Resources. Window detection,
+movement, and confirmation require bounded asynchronous polling and typed
+errors.
 
 ## Schema v2 launch-destination foundation
 

@@ -287,13 +287,13 @@ Do not pull these items into the MVP without a separate product decision:
 
 - workspace capture;
 - existing-window detection or reuse;
-- window placement and sizing;
+- window sizing and layout beyond Project workspace placement;
 - additional browsers or terminals beyond Safari, Chrome, and Terminal.app;
 - Terminal startup commands;
 - live configuration watching or merge conflict handling;
 - import, export, synchronization, or cloud storage;
 - plugins, variables, dependencies, or conditional execution;
-- exact AeroSpace per-window placement, AI, SSH, or Docker integrations;
+- AI, SSH, or Docker integrations;
 - Project notes; and
 - broad deployment-target support or App Store release work.
 

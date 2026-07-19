@@ -254,7 +254,6 @@ Properties:
 Do not implement:
 
 - Workspace capture
-- Per-window placement beyond activating an optional Project-level AeroSpace workspace
 - Window sizing
 - Browsers other than Safari and Google Chrome
 - Terminal selection
