@@ -98,6 +98,28 @@ recovery guidance, enabled chooser action, and hidden Projects editor.
 These results are recorded in `../IMPLEMENTATION_NOTES.md` and should be
 repeated during final acceptance verification.
 
+The AeroSpace placement acceptance pass retained a conflicting global Chrome
+rule targeting workspace `C` while WorkBench targeted workspace `6`. Initial
+and repeated Chrome launches finished in `6`; the repeated launch preserved the
+existing Chrome window. A mixed Chrome, Safari, Terminal, and Finder launch
+placed exactly one new window from each Resource in `6` and did not move the two
+existing Chrome windows.
+
+A clean Automation-permission pass reset Apple Events approval for
+`com.example.WorkBench`. The next mixed launch prompted independently for
+Chrome, Safari, Terminal, and Finder. Allowing every prompt produced no launch
+report, placed one new window per Resource in workspace `6`, and preserved the
+existing Chrome windows.
+
+In a controlled denial pass, denying Chrome produced the expected Apple Events
+authorization failure in the consolidated launch report and no new Chrome
+window. Safari, Terminal, and Finder still launched afterward, and each new
+window was confirmed in workspace `6`.
+
+Re-enabling Chrome in System Settings completed permission recovery. The next
+mixed launch required no new prompt, produced no failure report, and placed all
+four newly created application windows in workspace `6`.
+
 ## Verification still required
 
 The signed unsandboxed suite passes all 81 unit tests and all 16 UI tests. Save
@@ -115,8 +137,8 @@ back door or weaken the Automation boundary.
 ### Manual acceptance and permissions
 
 - Exercise Automation permission denial and revocation independently for
-  Safari, Chrome, Terminal, and Finder; verify later Resources are still attempted and
-  recovery guidance names the affected application.
+  Safari, Terminal, and Finder. Chrome denial, later-Resource continuation,
+  application-specific reporting, and System Settings recovery are verified.
 - Verify a signed Chrome Window launch creates a new window with tabs
   in saved order and that repeated launch creates another window.
 - Run the complete acceptance scenario from a clean configuration and clean

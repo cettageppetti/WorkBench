@@ -394,7 +394,12 @@ final class WorkBenchUITests: XCTestCase {
             return
         }
 
-        let projectSettings = app.staticTexts["Project Settings"]
+        let resource = app.staticTexts["Web"]
+        XCTAssertTrue(resource.waitForExistence(timeout: 2))
+        resource.click()
+        XCTAssertTrue(app.textFields["resource-name-field"].waitForExistence(timeout: 2))
+
+        let projectSettings = app.buttons["project-settings-row"]
         XCTAssertTrue(projectSettings.waitForExistence(timeout: 2))
         projectSettings.click()
 

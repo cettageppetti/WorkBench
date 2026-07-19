@@ -92,6 +92,31 @@ WorkBench attempts to restore the Project workspace after those failures and
 continues with later Resources. **Open Without Placement** remains an explicit
 preflight recovery path and bypasses all per-window placement operations.
 
+A signed local acceptance pass against AeroSpace `0.21.2-Beta` kept the
+Chrome-to-workspace-`C` detection rule enabled while a Project targeted
+workspace `6`. New Chrome windows finished in `6` on both the initial and
+already-running-application launches, and the existing Chrome window retained
+its ID and workspace. A subsequent mixed launch created one new Chrome, Safari,
+Terminal, and Finder window; all four finished in `6`, while the two existing
+Chrome windows remained unchanged.
+
+After `tccutil reset AppleEvents com.example.WorkBench`, a fresh local signed
+build prompted independently for Google Chrome, Safari, Terminal, and Finder.
+Allowing all four produced no launch report and created one new window for each
+Resource in workspace `6`; all previously observed Chrome windows retained
+their IDs and placement.
+
+A second reset exercised denial and continuation. Denying Chrome produced the
+Resource error `Not authorized to send Apple events to Google Chrome.` in the
+consolidated launch report. Chrome created no new window, while later Safari,
+Terminal, and Finder Resources succeeded and their exact new window IDs all
+finished in workspace `6`.
+
+Re-enabling Chrome under **System Settings > Privacy & Security > Automation**
+completed recovery without another prompt or launch report. The next mixed
+launch again created one Chrome, Safari, Terminal, and Finder window, and every
+new window finished in workspace `6`.
+
 The preflight validates first, then bypasses placement for destination-free
 Projects or activates and confirms a known AeroSpace destination when the
 machine-local integration setting is enabled. Disabled integration, activation
@@ -109,6 +134,12 @@ enable toggle writes through to `UserDefaults` immediately; while enabled, the
 user may check the AeroSpace connection and see the reported workspace names or
 a typed discovery error. UI tests use an isolated in-memory store, so they never
 alter the developer's real integration preference.
+
+**Project Settings** is an explicit row action that clears Resource selection.
+Using an optional `nil` List-selection tag made the row appear selectable but
+did not reliably return from Resource properties to Project properties. UI
+coverage now selects a Resource first and verifies that Project Settings exposes
+the launch-destination controls.
 
 The Resources column now begins with a selectable **Project Settings** row, and
 selecting a Project lands on that row rather than implicitly selecting its first

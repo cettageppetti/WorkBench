@@ -120,8 +120,12 @@ struct ContentView: View {
             .navigationTitle("Projects")
         } content: {
             List(selection: $model.selectedResourceID) {
-                Label("Project Settings", systemImage: "gearshape")
-                    .tag(nil as ResourceID?)
+                Button {
+                    model.selectedResourceID = nil
+                } label: {
+                    Label("Project Settings", systemImage: "gearshape")
+                }
+                    .buttonStyle(.plain)
                     .accessibilityIdentifier("project-settings-row")
                 ForEach(workflow.draft?.resources ?? [], id: \.id) { resource in
                     Label(resource.name, systemImage: icon(for: resource.payload))
