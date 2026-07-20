@@ -223,11 +223,21 @@ final class WorkBenchUITests: XCTestCase {
             in: app.textFields["browser-tab-0-field"],
             with: "https://chromium.org"
         )
+        app.buttons["Add Tab"].click()
+        replaceText(
+            in: app.textFields["browser-tab-1-field"],
+            with: "https://example.com"
+        )
+        app.buttons["move-browser-url-up-1"].click()
 
         app.typeKey("s", modifierFlags: .command)
         XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 1))
         XCTAssertEqual(
             app.textFields["browser-tab-0-field"].value as? String,
+            "https://example.com"
+        )
+        XCTAssertEqual(
+            app.textFields["browser-tab-1-field"].value as? String,
             "https://chromium.org"
         )
     }

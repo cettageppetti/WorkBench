@@ -98,6 +98,8 @@ and keeps the Projects editor hidden until the user resolves migration.
   precede Duplicate and Delete so the latter actions overflow first.
 - The File menu contains New, Open, Save, Duplicate, and Delete Project in the
   same priority order, providing stable access independent of toolbar overflow.
+- Safari, Chrome, and generic Web Browser URL rows can be reordered with compact
+  arrow controls; UI coverage verifies that the reordered sequence is saved.
 - Starter Project opens new Safari, Terminal, and Finder windows in order.
 - Reopening Starter Project creates one additional window in each application.
 - Adding, selecting, and immediately removing a Safari Window no longer

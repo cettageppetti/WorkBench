@@ -443,8 +443,36 @@ struct ContentView: View {
     ) -> some View {
         Section(kind.sectionTitle) {
             ForEach(browser.tabs.indices, id: \.self) { tabIndex in
-                TextField("URL", text: browserTabBinding(resourceID, tabIndex, kind, workflow))
-                    .accessibilityIdentifier("browser-tab-\(tabIndex)-field")
+                HStack {
+                    TextField("URL", text: browserTabBinding(resourceID, tabIndex, kind, workflow))
+                        .accessibilityIdentifier("browser-tab-\(tabIndex)-field")
+                    Button {
+                        moveBrowserTab(
+                            resourceID: resourceID,
+                            kind: kind,
+                            from: tabIndex,
+                            to: tabIndex - 1
+                        )
+                    } label: {
+                        Image(systemName: "arrow.up")
+                    }
+                    .disabled(tabIndex == browser.tabs.startIndex)
+                    .accessibilityLabel("Move URL Up")
+                    .accessibilityIdentifier("move-browser-url-up-\(tabIndex)")
+                    Button {
+                        moveBrowserTab(
+                            resourceID: resourceID,
+                            kind: kind,
+                            from: tabIndex,
+                            to: tabIndex + 1
+                        )
+                    } label: {
+                        Image(systemName: "arrow.down")
+                    }
+                    .disabled(tabIndex == browser.tabs.index(before: browser.tabs.endIndex))
+                    .accessibilityLabel("Move URL Down")
+                    .accessibilityIdentifier("move-browser-url-down-\(tabIndex)")
+                }
             }
             Button("Add Tab") {
                 model.updateDraft { project in
@@ -465,6 +493,22 @@ struct ContentView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func moveBrowserTab(
+        resourceID: ResourceID,
+        kind: BrowserKind,
+        from source: Int,
+        to destination: Int
+    ) {
+        model.updateDraft { project in
+            guard let index = project.resources.firstIndex(where: { $0.id == resourceID }),
+                  var browser = kind.browser(from: project.resources[index].payload),
+                  browser.tabs.indices.contains(source),
+                  browser.tabs.indices.contains(destination) else { return }
+            browser.tabs.swapAt(source, destination)
+            project.resources[index].payload = kind.payload(browser)
         }
     }
 

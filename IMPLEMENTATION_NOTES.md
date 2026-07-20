@@ -452,6 +452,10 @@ The same five Project actions appear in the File menu in that order, so every
 toolbar action remains available when its button is overflowed. New Project
 uses Command-N; Open and Save retain Command-O and Command-S.
 
+Safari, Chrome, and generic Web Browser URL rows expose the same move-up and
+move-down controls. Reordering changes the persisted URL array, which is the tab
+creation order used by each browser launcher.
+
 The AppKit save-before-closing alert explicitly loads the running bundle's icon
 through `NSWorkspace`. This keeps lifecycle prompts branded with the WorkBench
 icon in both the production Window scene and the custom automated-test host.
