@@ -48,12 +48,27 @@ final class ProjectModelTests: XCTestCase {
                 )
             )
         )
+        project.resources.append(
+            Resource(
+                name: "Brave Research",
+                payload: .webBrowserWindow(
+                    WebBrowserResource(
+                        application: ApplicationResource(
+                            bundleIdentifier: "com.brave.Browser",
+                            lastKnownPath: "/Applications/Brave Browser.app"
+                        ),
+                        tabs: ["https://example.com", "https://brave.com"]
+                    )
+                )
+            )
+        )
         let encoded = try encoder.encode(project)
         let decoded = try decoder.decode(Project.self, from: encoded)
 
         XCTAssertEqual(decoded, project)
         XCTAssertEqual(decoded.resources[3].type, "chrome-window")
-        XCTAssertEqual(decoded.resources.last?.type, "application")
+        XCTAssertEqual(decoded.resources[4].type, "application")
+        XCTAssertEqual(decoded.resources.last?.type, "web-browser-window")
     }
 
     func testUnsupportedResourceRoundTripsWithoutDataLoss() throws {
@@ -245,6 +260,18 @@ final class ProjectModelTests: XCTestCase {
                     payload: .application(
                         ApplicationResource(bundleIdentifier: " ", lastKnownPath: "Applications/App")
                     )
+                ),
+                Resource(
+                    name: "Invalid Web Browser",
+                    payload: .webBrowserWindow(
+                        WebBrowserResource(
+                            application: ApplicationResource(
+                                bundleIdentifier: " ",
+                                lastKnownPath: "Applications/Browser"
+                            ),
+                            tabs: ["not a URL"]
+                        )
+                    )
                 )
             ],
             launchDestination: .aeroSpaceWorkspace(" \n")
@@ -266,6 +293,9 @@ final class ProjectModelTests: XCTestCase {
         XCTAssertTrue(issues.contains { $0.field == "resources[4].workingDirectory" })
         XCTAssertTrue(issues.contains { $0.field == "resources[5].bundleIdentifier" })
         XCTAssertTrue(issues.contains { $0.field == "resources[5].lastKnownPath" })
+        XCTAssertTrue(issues.contains { $0.field == "resources[6].bundleIdentifier" })
+        XCTAssertTrue(issues.contains { $0.field == "resources[6].lastKnownPath" })
+        XCTAssertTrue(issues.contains { $0.field == "resources[6].tabs[0]" })
     }
 
     private var encoder: JSONEncoder {

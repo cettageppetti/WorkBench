@@ -75,6 +75,7 @@ Resource
     terminalSession(workingDirectory)
     finderWindow(folder)
     application(bundleIdentifier, lastKnownPath)
+    webBrowserWindow(bundleIdentifier, lastKnownPath, tabs)
     unsupported(type, rawObject)
 ```
 
@@ -135,6 +136,13 @@ parallel Resource-type switch; an unregistered type is skipped and reported.
 The default registry contains Safari, Chrome, Terminal, Finder, and generic
 application adapters. A separate future capability catalog may map installed
 bundle identifiers to enhanced Resource choices in the editor.
+
+The generic Web Browser adapter is a distinct compiled Resource type layered on
+the generic application identity. It sends the ordered URL list through
+`NSWorkspace` to the selected application and does not use AppleScript or
+user-supplied commands. The receiving browser owns window reuse and tab
+grouping, so only the enhanced Safari and Chrome adapters promise a dedicated
+new tabbed window.
 
 Apple Events and scripting details belong inside the adapters. The architecture does not expose scripts as part of the Project model because Projects describe desired state, not implementation steps.
 

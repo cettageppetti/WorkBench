@@ -11,7 +11,8 @@ final class ProjectLauncherTests: XCTestCase {
             chromeLauncher: ChromeLauncherStub(recorder: recorder),
             terminalLauncher: TerminalLauncherStub(recorder: recorder),
             finderLauncher: FinderLauncherStub(recorder: recorder),
-            applicationLauncher: ApplicationLauncherStub(recorder: recorder)
+            applicationLauncher: ApplicationLauncherStub(recorder: recorder),
+            webBrowserLauncher: WebBrowserLauncherStub(recorder: recorder)
         )
         let resources = [
             Resource(name: "Safari", payload: .browserWindow(.init(tabs: ["https://example.com"]))),
@@ -23,6 +24,16 @@ final class ProjectLauncherTests: XCTestCase {
                 payload: .application(.init(
                     bundleIdentifier: "com.example.Editor",
                     lastKnownPath: "/Applications/Editor.app"
+                ))
+            ),
+            Resource(
+                name: "Brave",
+                payload: .webBrowserWindow(.init(
+                    application: .init(
+                        bundleIdentifier: "com.brave.Browser",
+                        lastKnownPath: "/Applications/Brave Browser.app"
+                    ),
+                    tabs: ["https://example.com"]
                 ))
             )
         ]
@@ -36,9 +47,29 @@ final class ProjectLauncherTests: XCTestCase {
                 "com.google.Chrome",
                 "com.apple.Terminal",
                 "com.apple.finder",
-                "com.example.Editor"
+                "com.example.Editor",
+                "com.brave.Browser"
             ]
         )
+    }
+
+    func testGenericWebBrowserUsesItsRegisteredAdapter() async {
+        let recorder = InvocationRecorder()
+        let browser = WebBrowserResource(
+            application: .init(
+                bundleIdentifier: "com.brave.Browser",
+                lastKnownPath: "/Applications/Brave Browser.app"
+            ),
+            tabs: ["https://example.com", "https://brave.com"]
+        )
+        let launcher = ProjectLauncher(webBrowserLauncher: WebBrowserLauncherStub(recorder: recorder))
+
+        let report = await launcher.open(Project(name: "Brave", resources: [
+            Resource(name: "Brave", payload: .webBrowserWindow(browser))
+        ]))
+
+        XCTAssertEqual(recorder.applications, ["com.brave.Browser:https://example.com,https://brave.com"])
+        XCTAssertEqual(report.results.map(\.outcome), [.succeeded])
     }
 
     func testRegistryControlsDispatchWithoutSwitchFallback() async {
@@ -593,6 +624,19 @@ private struct ApplicationLauncherStub: ApplicationLaunching {
 
     func open(_ application: ApplicationResource) async -> String? {
         recorder.applications.append(application.bundleIdentifier)
+        return error
+    }
+}
+
+@MainActor
+private struct WebBrowserLauncherStub: WebBrowserLaunching {
+    let recorder: InvocationRecorder
+    var error: String?
+
+    func open(_ browser: WebBrowserResource) async -> String? {
+        recorder.applications.append(
+            "\(browser.application.bundleIdentifier):\(browser.tabs.joined(separator: ","))"
+        )
         return error
     }
 }

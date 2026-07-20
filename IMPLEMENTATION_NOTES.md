@@ -53,6 +53,19 @@ their bundle identifier belongs to an enhanced application such as Safari.
 Missing registry entries use the existing unsupported-Resource report rather
 than falling through to a parallel switch in `ProjectLauncher`.
 
+Generic Applications can now be designated as Web Browser Resources. The
+`web-browser-window` payload retains the selected bundle identifier and fallback
+path and adds ordered URLs. `FoundationWebBrowserLauncher` uses `NSWorkspace`
+to open those URLs with the selected application, avoiding AppleScript and
+arbitrary command execution. The browser controls whether URLs form tabs in one
+new window or reuse existing UI; Safari and Chrome remain the deterministic
+enhanced choices. Disabling the editor option converts the Resource back to a
+generic Application and intentionally removes its URL list.
+
+A signed feature-branch acceptance build selected Brave Browser as a generic
+Application, converted it with **Open as Web Browser**, saved multiple URLs, and
+opened them successfully as the requested Brave tabs.
+
 A signed real-world acceptance pass selected `/Applications/iMovie.app`, saved
 its `com.apple.iMovie` bundle identity, and opened the Project with AeroSpace
 workspace `8` selected. iMovie activated successfully, its newly created window
@@ -187,8 +200,8 @@ failure, and unknown destination types launch no Resources and retain the
 attempted Project snapshot for explicit **Open Without Placement** or **Cancel**
 recovery. The Open command is disabled while activation is in progress. UI-test
 doubles never contact AeroSpace or move the active workspace. After the Settings
-and editor increment, the complete signed scheme passes all 89 unit tests and
-all 16 UI tests.
+and generic-browser increment, the complete signed scheme passes all 91 unit
+tests and all 17 UI tests.
 
 ## AeroSpace Settings and Project editor
 

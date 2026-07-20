@@ -283,6 +283,8 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
         case .finderWindow: name = "Finder Window"
         case let .application(application):
             name = URL(filePath: application.lastKnownPath).deletingPathExtension().lastPathComponent
+        case let .webBrowserWindow(browser):
+            name = URL(filePath: browser.application.lastKnownPath).deletingPathExtension().lastPathComponent
         case .unsupported: return
         }
         let resource = Resource(name: name, payload: payload)
@@ -301,6 +303,22 @@ final class WorkBenchApplicationModel: NSObject, NSWindowDelegate {
             selectedResourceID = resource.id
         } catch {
             present(error)
+        }
+    }
+
+    func setWebBrowserRole(for resourceID: ResourceID, enabled: Bool) {
+        updateDraft { project in
+            guard let index = project.resources.firstIndex(where: { $0.id == resourceID }) else { return }
+            switch (enabled, project.resources[index].payload) {
+            case let (true, .application(application)):
+                project.resources[index].payload = .webBrowserWindow(
+                    WebBrowserResource(application: application, tabs: ["https://"])
+                )
+            case let (false, .webBrowserWindow(browser)):
+                project.resources[index].payload = .application(browser.application)
+            default:
+                break
+            }
         }
     }
 

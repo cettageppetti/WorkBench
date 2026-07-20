@@ -233,6 +233,38 @@ final class WorkBenchUITests: XCTestCase {
     }
 
     @MainActor
+    func testApplicationCanBeConfiguredAsWebBrowserAndSaved() {
+        continueAfterFailure = false
+        let app = launchApp()
+        let project = app.staticTexts["Application Project"]
+        guard project.waitForExistence(timeout: 5) else {
+            XCTFail("Application Project was not visible. Accessibility hierarchy:\n\(app.debugDescription)")
+            return
+        }
+        project.click()
+
+        let resource = app.staticTexts["Brave Browser"]
+        XCTAssertTrue(resource.waitForExistence(timeout: 2))
+        resource.click()
+
+        let browserRole = app.switches["web-browser-role-toggle"]
+        XCTAssertTrue(browserRole.waitForExistence(timeout: 2))
+        browserRole.click()
+
+        XCTAssertTrue(app.staticTexts["Web Browser URLs"].waitForExistence(timeout: 2))
+        replaceText(in: app.textFields["browser-tab-0-field"], with: "https://brave.com")
+        app.buttons["Add Tab"].click()
+        replaceText(in: app.textFields["browser-tab-1-field"], with: "https://example.com")
+        app.buttons["move-browser-url-up-1"].click()
+
+        app.typeKey("s", modifierFlags: .command)
+
+        XCTAssertFalse(app.staticTexts["unsaved-changes-indicator"].waitForExistence(timeout: 1))
+        XCTAssertEqual(app.textFields["browser-tab-0-field"].value as? String, "https://example.com")
+        XCTAssertEqual(app.textFields["browser-tab-1-field"].value as? String, "https://brave.com")
+    }
+
+    @MainActor
     func testResourcesCanBeReorderedAndSaved() {
         continueAfterFailure = false
         let app = launchApp()

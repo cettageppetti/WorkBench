@@ -242,6 +242,11 @@ compiled adapter registry keyed by stable Resource type. This preserves the
 difference between generic and enhanced behavior while providing a single
 execution extension point for later compiled adapters.
 
+A selected generic Application can be converted to a generic Web Browser
+Resource with an ordered URL list. It uses standard macOS URL opening, while
+Safari and Chrome retain their deterministic enhanced adapters. Browser-owned
+window reuse and tab grouping are documented as a best-effort limitation.
+
 ### Outcomes
 
 - Implement the sequential Project launcher and structured LaunchReport.

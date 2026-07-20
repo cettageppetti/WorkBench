@@ -92,17 +92,10 @@ enum ProjectValidator {
             case let .finderWindow(finder):
                 validatePath(finder.folder, field: "\(prefix).folder", into: &issues)
             case let .application(application):
-                if application.bundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    issues.append(
-                        .init(field: "\(prefix).bundleIdentifier", message: "Application bundle identifier is required.")
-                    )
-                }
-                let path = application.lastKnownPath.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !path.hasPrefix("/") || URL(filePath: path).pathExtension.lowercased() != "app" {
-                    issues.append(
-                        .init(field: "\(prefix).lastKnownPath", message: "Choose a macOS application bundle.")
-                    )
-                }
+                validateApplication(application, prefix: prefix, issues: &issues)
+            case let .webBrowserWindow(browser):
+                validateApplication(browser.application, prefix: prefix, issues: &issues)
+                validateBrowser(browser.tabs, applicationName: "web browser", prefix: prefix, issues: &issues)
             case .unsupported:
                 break
             }
@@ -117,18 +110,45 @@ enum ProjectValidator {
         prefix: String,
         issues: inout [ProjectValidationIssue]
     ) {
-        if browser.tabs.isEmpty {
+        validateBrowser(browser.tabs, applicationName: applicationName, prefix: prefix, issues: &issues)
+    }
+
+    private static func validateBrowser(
+        _ tabs: [String],
+        applicationName: String,
+        prefix: String,
+        issues: inout [ProjectValidationIssue]
+    ) {
+        if tabs.isEmpty {
             issues.append(
                 .init(field: "\(prefix).tabs", message: "At least one \(applicationName) tab is required.")
             )
         }
-        for (tabIndex, tab) in browser.tabs.enumerated()
+        for (tabIndex, tab) in tabs.enumerated()
             where URL(string: tab)?.scheme == nil {
             issues.append(
                 .init(
                     field: "\(prefix).tabs[\(tabIndex)]",
                     message: "Enter a URL \(applicationName) can open."
                 )
+            )
+        }
+    }
+
+    private static func validateApplication(
+        _ application: ApplicationResource,
+        prefix: String,
+        issues: inout [ProjectValidationIssue]
+    ) {
+        if application.bundleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            issues.append(
+                .init(field: "\(prefix).bundleIdentifier", message: "Application bundle identifier is required.")
+            )
+        }
+        let path = application.lastKnownPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !path.hasPrefix("/") || URL(filePath: path).pathExtension.lowercased() != "app" {
+            issues.append(
+                .init(field: "\(prefix).lastKnownPath", message: "Choose a macOS application bundle.")
             )
         }
     }

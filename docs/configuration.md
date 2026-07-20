@@ -102,6 +102,7 @@ Supported Resource payloads:
 | `terminal-session` | `workingDirectory`: path string | Opens one new Terminal window and explicitly changes to the resolved directory. |
 | `finder-window` | `folder`: path string | Opens one new Finder window showing the resolved directory. |
 | `application` | `bundleIdentifier`: nonempty string; `lastKnownPath`: absolute `.app` path | Opens or activates the application using normal macOS behavior. A new window is not guaranteed. |
+| `web-browser-window` | `bundleIdentifier`: nonempty string; `lastKnownPath`: absolute `.app` path; `tabs`: nonempty array of URL strings with schemes | Asks macOS to open the ordered URLs with the selected application. Window reuse and tab grouping follow that browser's behavior. |
 
 Add a generic Application Resource through **Add Resource > Application…**.
 WorkBench uses the bundle identifier to find moved or updated installations and
@@ -109,6 +110,14 @@ uses the selected path as a fallback. If the application is unavailable, only
 that Resource fails. With AeroSpace placement, WorkBench moves a window only
 when the launch produces exactly one identifiable new window; it never moves an
 existing window merely because the application was activated.
+
+Enable **Open as Web Browser** in an Application Resource to expose its URL
+list. This converts the Resource to `web-browser-window`; disabling the option
+converts it back to `application` and removes the browser URL list. Generic web
+browser launching uses the standard macOS application-opening API and does not
+require AppleScript. WorkBench does not guarantee that an arbitrary browser
+will create one new window or group every URL into tabs. Use the enhanced Safari
+or Chrome Resource when that deterministic behavior is required.
 
 Terminal and Finder paths must be absolute, `~`, or begin with `~/`. WorkBench expands `~` to the macOS login account's home directory. A Terminal session stored as exactly `~` or `~/` opens with Terminal's normal profile startup behavior and does not inject a `cd` command; all other Terminal paths are enforced with an explicit directory change. Other relative paths and named-user forms such as `~someone/Projects` are invalid. Path existence and directory accessibility are checked when the Project is opened, not when it is decoded.
 

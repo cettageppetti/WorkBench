@@ -176,12 +176,18 @@ struct ApplicationResource: Codable, Equatable {
     var lastKnownPath: String
 }
 
+struct WebBrowserResource: Codable, Equatable {
+    var application: ApplicationResource
+    var tabs: [String]
+}
+
 enum ResourcePayload: Equatable {
     case browserWindow(BrowserWindow)
     case chromeWindow(BrowserWindow)
     case terminalSession(TerminalSession)
     case finderWindow(FinderWindow)
     case application(ApplicationResource)
+    case webBrowserWindow(WebBrowserResource)
     case unsupported(type: String, rawObject: [String: JSONValue])
 }
 
@@ -202,6 +208,8 @@ struct Resource: Codable, Equatable {
             "finder-window"
         case .application:
             "application"
+        case .webBrowserWindow:
+            "web-browser-window"
         case let .unsupported(type, _):
             type
         }
@@ -264,6 +272,16 @@ struct Resource: Codable, Equatable {
                     lastKnownPath: try common.decode(String.self, forKey: .lastKnownPath)
                 )
             )
+        case "web-browser-window":
+            payload = .webBrowserWindow(
+                WebBrowserResource(
+                    application: ApplicationResource(
+                        bundleIdentifier: try common.decode(String.self, forKey: .bundleIdentifier),
+                        lastKnownPath: try common.decode(String.self, forKey: .lastKnownPath)
+                    ),
+                    tabs: try common.decode([String].self, forKey: .tabs)
+                )
+            )
         default:
             payload = .unsupported(type: type, rawObject: object)
         }
@@ -292,6 +310,10 @@ struct Resource: Codable, Equatable {
         case let .application(application):
             try container.encode(application.bundleIdentifier, forKey: .bundleIdentifier)
             try container.encode(application.lastKnownPath, forKey: .lastKnownPath)
+        case let .webBrowserWindow(browser):
+            try container.encode(browser.application.bundleIdentifier, forKey: .bundleIdentifier)
+            try container.encode(browser.application.lastKnownPath, forKey: .lastKnownPath)
+            try container.encode(browser.tabs, forKey: .tabs)
         case .unsupported:
             break
         }

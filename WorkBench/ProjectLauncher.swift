@@ -56,6 +56,11 @@ protocol ApplicationLaunching {
 }
 
 @MainActor
+protocol WebBrowserLaunching {
+    func open(_ browser: WebBrowserResource) async -> String?
+}
+
+@MainActor
 protocol AppleScriptExecuting {
     func execute(source: String) -> String?
 }
@@ -215,7 +220,7 @@ struct FoundationApplicationLauncher: ApplicationLaunching {
     }
 
     func open(_ application: ApplicationResource) async -> String? {
-        guard let url = applicationURL(for: application) else {
+        guard let url = applicationURL(for: application, workspace: workspace, fileManager: fileManager) else {
             return "The application is not installed or its saved location is unavailable."
         }
         return await withCheckedContinuation { continuation in
@@ -227,20 +232,59 @@ struct FoundationApplicationLauncher: ApplicationLaunching {
         }
     }
 
-    private func applicationURL(for application: ApplicationResource) -> URL? {
-        if let registered = workspace.urlForApplication(
-            withBundleIdentifier: application.bundleIdentifier
-        ) {
-            return registered
-        }
+}
 
-        let fallback = URL(filePath: application.lastKnownPath)
-        guard fileManager.fileExists(atPath: fallback.path),
-              Bundle(url: fallback)?.bundleIdentifier == application.bundleIdentifier else {
-            return nil
-        }
-        return fallback
+@MainActor
+struct FoundationWebBrowserLauncher: WebBrowserLaunching {
+    private let workspace: NSWorkspace
+    private let fileManager: FileManager
+
+    init(workspace: NSWorkspace = .shared, fileManager: FileManager = .default) {
+        self.workspace = workspace
+        self.fileManager = fileManager
     }
+
+    func open(_ browser: WebBrowserResource) async -> String? {
+        guard let applicationURL = applicationURL(
+            for: browser.application,
+            workspace: workspace,
+            fileManager: fileManager
+        ) else {
+            return "The web browser is not installed or its saved location is unavailable."
+        }
+        let urls = browser.tabs.compactMap(URL.init(string:))
+        guard urls.count == browser.tabs.count, !urls.isEmpty else {
+            return "At least one valid web browser URL is required."
+        }
+        return await withCheckedContinuation { continuation in
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            workspace.open(
+                urls,
+                withApplicationAt: applicationURL,
+                configuration: configuration
+            ) { _, error in
+                continuation.resume(returning: error?.localizedDescription)
+            }
+        }
+    }
+}
+
+private func applicationURL(
+    for application: ApplicationResource,
+    workspace: NSWorkspace,
+    fileManager: FileManager
+) -> URL? {
+    if let registered = workspace.urlForApplication(withBundleIdentifier: application.bundleIdentifier) {
+        return registered
+    }
+
+    let fallback = URL(filePath: application.lastKnownPath)
+    guard fileManager.fileExists(atPath: fallback.path),
+          Bundle(url: fallback)?.bundleIdentifier == application.bundleIdentifier else {
+        return nil
+    }
+    return fallback
 }
 
 @MainActor
@@ -293,7 +337,8 @@ struct ResourceLaunchAdapterRegistry {
         chromeLauncher: any BrowserLaunching,
         terminalLauncher: any TerminalLaunching,
         finderLauncher: any FinderLaunching,
-        applicationLauncher: any ApplicationLaunching
+        applicationLauncher: any ApplicationLaunching,
+        webBrowserLauncher: any WebBrowserLaunching = FoundationWebBrowserLauncher()
     ) -> ResourceLaunchAdapterRegistry {
         ResourceLaunchAdapterRegistry(adapters: [
             ResourceLaunchAdapter(
@@ -348,6 +393,19 @@ struct ResourceLaunchAdapterRegistry {
                     }
                     return outcome(for: await applicationLauncher.open(application))
                 }
+            ),
+            ResourceLaunchAdapter(
+                resourceType: "web-browser-window",
+                bundleIdentifier: { payload in
+                    guard case let .webBrowserWindow(browser) = payload else { return nil }
+                    return browser.application.bundleIdentifier
+                },
+                launch: { payload in
+                    guard case let .webBrowserWindow(browser) = payload else {
+                        return incompatiblePayload(for: "web-browser-window")
+                    }
+                    return outcome(for: await webBrowserLauncher.open(browser))
+                }
             )
         ])
     }
@@ -367,6 +425,7 @@ final class ProjectLauncher {
         terminalLauncher: any TerminalLaunching = TerminalLauncher(),
         finderLauncher: any FinderLaunching = FinderLauncher(),
         applicationLauncher: any ApplicationLaunching = FoundationApplicationLauncher(),
+        webBrowserLauncher: any WebBrowserLaunching = FoundationWebBrowserLauncher(),
         aeroSpaceWindowController: any AeroSpaceWindowControlling = AeroSpaceClient(),
         aeroSpaceWorkspaceController: any AeroSpaceControlling = AeroSpaceClient(),
         windowDetectionAttempts: Int = 20,
@@ -378,7 +437,8 @@ final class ProjectLauncher {
                 chromeLauncher: chromeLauncher,
                 terminalLauncher: terminalLauncher,
                 finderLauncher: finderLauncher,
-                applicationLauncher: applicationLauncher
+                applicationLauncher: applicationLauncher,
+                webBrowserLauncher: webBrowserLauncher
             ),
             aeroSpaceWindowController: aeroSpaceWindowController,
             aeroSpaceWorkspaceController: aeroSpaceWorkspaceController,

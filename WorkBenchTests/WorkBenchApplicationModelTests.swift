@@ -69,6 +69,27 @@ final class WorkBenchApplicationModelTests: XCTestCase {
         XCTAssertTrue(workflow.isDirty)
     }
 
+    func testApplicationCanConvertToWebBrowserAndBack() throws {
+        let application = ApplicationResource(
+            bundleIdentifier: "com.brave.Browser",
+            lastKnownPath: "/Applications/Brave Browser.app"
+        )
+        let resource = Resource(name: "Brave Browser", payload: .application(application))
+        let workflow = try makeWorkflow(projects: [Project(name: "Project", resources: [resource])])
+        let model = WorkBenchApplicationModel(workflow: workflow)
+
+        model.setWebBrowserRole(for: resource.id, enabled: true)
+
+        XCTAssertEqual(
+            workflow.draft?.resources[0].payload,
+            .webBrowserWindow(WebBrowserResource(application: application, tabs: ["https://"]))
+        )
+
+        model.setWebBrowserRole(for: resource.id, enabled: false)
+
+        XCTAssertEqual(workflow.draft?.resources[0].payload, .application(application))
+    }
+
     func testDirtyProjectSelectionPresentsSharedUnsavedDialog() throws {
         let first = Project(name: "First", resources: [])
         let second = Project(name: "Second", resources: [])

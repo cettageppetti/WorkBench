@@ -28,6 +28,20 @@ enum UITestModelFactory {
                     launchDestination: .aeroSpaceWorkspace("2")
                 ),
                 Project(
+                    name: "Application Project",
+                    resources: [
+                        Resource(
+                            name: "Brave Browser",
+                            payload: .application(
+                                ApplicationResource(
+                                    bundleIdentifier: "com.brave.Browser",
+                                    lastKnownPath: "/Applications/Brave Browser.app"
+                                )
+                            )
+                        )
+                    ]
+                ),
+                Project(
                     name: "Future Project",
                     resources: [
                         Resource(
@@ -54,7 +68,8 @@ enum UITestModelFactory {
             browserLauncher: UITestBrowserLauncher(),
             chromeLauncher: UITestBrowserLauncher(),
             terminalLauncher: UITestTerminalLauncher(),
-            finderLauncher: UITestFinderLauncher()
+            finderLauncher: UITestFinderLauncher(),
+            webBrowserLauncher: UITestWebBrowserLauncher()
         )
         let directoryStatus: ConfigurationDirectoryAccess.Status =
             environment[needsMigrationEnvironmentKey] == "1"
@@ -110,6 +125,11 @@ private final class UITestProjectRepository: ProjectRepositorying {
 @MainActor
 private struct UITestBrowserLauncher: BrowserLaunching {
     func open(_ browser: BrowserWindow) -> String? { nil }
+}
+
+@MainActor
+private struct UITestWebBrowserLauncher: WebBrowserLaunching {
+    func open(_ browser: WebBrowserResource) async -> String? { nil }
 }
 
 @MainActor

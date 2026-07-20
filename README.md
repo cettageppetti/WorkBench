@@ -19,6 +19,8 @@ The MVP will answer one question: can a user describe a working environment as a
 - Open Terminal windows at configured directories.
 - Open Finder windows at configured folders.
 - Add any selected macOS application as a baseline Application Resource.
+- Designate a selected application as a generic web browser and give it an
+  ordered list of URLs.
 - Manage Project data under `~/Library/Application Support/WorkBench/Projects`.
 - Offer a one-time, copy-based import from the former user-selected Project folder without deleting the source.
 - Reload the application-managed Project library through **Reload Projects**.
@@ -31,6 +33,11 @@ behavior. Safari, Chrome, Terminal, and Finder remain enhanced Resources with
 application-specific configuration. When AeroSpace placement is enabled,
 WorkBench moves a generic application's window only when exactly one new window
 can be identified.
+
+Generic Web Browser Resources ask macOS to open their ordered URLs with the
+selected application. The browser decides whether it creates a new window,
+reuses an existing window, or groups the URLs as tabs. Safari and Chrome remain
+enhanced Resources when deterministic new-window behavior is required.
 
 AeroSpace integration is enabled per machine in **WorkBench > Settings**.
 Select **Project Settings** above a Project's Resources to configure its optional

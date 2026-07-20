@@ -338,13 +338,101 @@ struct ContentView: View {
             Section("Application") {
                 LabeledContent("Bundle Identifier", value: application.bundleIdentifier)
                 LabeledContent("Last Known Location", value: application.lastKnownPath)
+                Toggle(
+                    "Open as Web Browser",
+                    isOn: webBrowserRoleBinding(resource.id, workflow)
+                )
+                .accessibilityIdentifier("web-browser-role-toggle")
                 Text("WorkBench opens this application using its normal macOS behavior.")
                     .foregroundStyle(.secondary)
             }
+        case let .webBrowserWindow(browser):
+            Section("Application") {
+                LabeledContent("Bundle Identifier", value: browser.application.bundleIdentifier)
+                LabeledContent("Last Known Location", value: browser.application.lastKnownPath)
+                Toggle(
+                    "Open as Web Browser",
+                    isOn: webBrowserRoleBinding(resource.id, workflow)
+                )
+                .accessibilityIdentifier("web-browser-role-toggle")
+                Text("Window and tab grouping follow this browser’s normal macOS behavior.")
+                    .foregroundStyle(.secondary)
+            }
+            genericWebBrowserFields(browser, resourceID: resource.id, workflow: workflow)
         case let .unsupported(type, _):
             LabeledContent("Type", value: type)
             Label("This Resource type is unsupported. Its JSON will be preserved.", systemImage: "questionmark.diamond")
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func genericWebBrowserFields(
+        _ browser: WebBrowserResource,
+        resourceID: ResourceID,
+        workflow: ProjectWorkflow
+    ) -> some View {
+        Section("Web Browser URLs") {
+            ForEach(browser.tabs.indices, id: \.self) { tabIndex in
+                HStack {
+                    TextField("URL", text: genericBrowserTabBinding(resourceID, tabIndex, workflow))
+                        .accessibilityIdentifier("browser-tab-\(tabIndex)-field")
+                    Button {
+                        moveGenericBrowserTab(
+                            resourceID: resourceID,
+                            from: tabIndex,
+                            to: tabIndex - 1
+                        )
+                    } label: {
+                        Image(systemName: "arrow.up")
+                    }
+                    .disabled(tabIndex == browser.tabs.startIndex)
+                    .accessibilityLabel("Move URL Up")
+                    .accessibilityIdentifier("move-browser-url-up-\(tabIndex)")
+                    Button {
+                        moveGenericBrowserTab(
+                            resourceID: resourceID,
+                            from: tabIndex,
+                            to: tabIndex + 1
+                        )
+                    } label: {
+                        Image(systemName: "arrow.down")
+                    }
+                    .disabled(tabIndex == browser.tabs.index(before: browser.tabs.endIndex))
+                    .accessibilityLabel("Move URL Down")
+                    .accessibilityIdentifier("move-browser-url-down-\(tabIndex)")
+                }
+            }
+            Button("Add Tab") {
+                model.updateDraft { project in
+                    guard let index = project.resources.firstIndex(where: { $0.id == resourceID }),
+                          case var .webBrowserWindow(current) = project.resources[index].payload else { return }
+                    current.tabs.append("https://")
+                    project.resources[index].payload = .webBrowserWindow(current)
+                }
+            }
+            if browser.tabs.count > 1 {
+                Button("Remove Last Tab") {
+                    model.updateDraft { project in
+                        guard let index = project.resources.firstIndex(where: { $0.id == resourceID }),
+                              case var .webBrowserWindow(current) = project.resources[index].payload,
+                              current.tabs.count > 1 else { return }
+                        current.tabs.removeLast()
+                        project.resources[index].payload = .webBrowserWindow(current)
+                    }
+                }
+            }
+        }
+    }
+
+    private func moveGenericBrowserTab(resourceID: ResourceID, from source: Int, to destination: Int) {
+        model.updateDraft { project in
+            guard let index = project.resources.firstIndex(where: { $0.id == resourceID }),
+                  case var .webBrowserWindow(browser) = project.resources[index].payload,
+                  browser.tabs.indices.contains(source),
+                  browser.tabs.indices.contains(destination) else { return }
+            browser.tabs.swapAt(source, destination)
+            project.resources[index].payload = .webBrowserWindow(browser)
         }
     }
 
@@ -452,6 +540,42 @@ struct ContentView: View {
         })
     }
 
+    private func genericBrowserTabBinding(
+        _ resourceID: ResourceID,
+        _ tabIndex: Int,
+        _ workflow: ProjectWorkflow
+    ) -> Binding<String> {
+        Binding(get: {
+            guard let resource = workflow.draft?.resources.first(where: { $0.id == resourceID }),
+                  case let .webBrowserWindow(browser) = resource.payload,
+                  browser.tabs.indices.contains(tabIndex) else { return "" }
+            return browser.tabs[tabIndex]
+        }, set: { value in
+            model.updateDraft { project in
+                guard let index = project.resources.firstIndex(where: { $0.id == resourceID }),
+                      case var .webBrowserWindow(browser) = project.resources[index].payload,
+                      browser.tabs.indices.contains(tabIndex) else { return }
+                browser.tabs[tabIndex] = value
+                project.resources[index].payload = .webBrowserWindow(browser)
+            }
+        })
+    }
+
+    private func webBrowserRoleBinding(
+        _ resourceID: ResourceID,
+        _ workflow: ProjectWorkflow
+    ) -> Binding<Bool> {
+        Binding(get: {
+            guard let payload = workflow.draft?.resources.first(where: { $0.id == resourceID })?.payload else {
+                return false
+            }
+            if case .webBrowserWindow = payload { return true }
+            return false
+        }, set: { enabled in
+            model.setWebBrowserRole(for: resourceID, enabled: enabled)
+        })
+    }
+
     private func payloadStringBinding(
         _ current: String,
         resourceID: ResourceID,
@@ -472,6 +596,7 @@ struct ContentView: View {
         case .terminalSession: "terminal"
         case .finderWindow: "folder"
         case .application: "app"
+        case .webBrowserWindow: "globe"
         case .unsupported: "questionmark.diamond"
         }
     }
