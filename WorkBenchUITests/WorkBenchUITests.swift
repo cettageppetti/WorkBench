@@ -299,9 +299,7 @@ final class WorkBenchUITests: XCTestCase {
         }
 
         secondProject.click()
-        let deleteButton = app.buttons["delete-project-button"]
-        XCTAssertTrue(deleteButton.waitForExistence(timeout: 2))
-        deleteButton.click()
+        chooseFileCommand("Delete Project", in: app)
 
         var alert = app.sheets.firstMatch
         XCTAssertTrue(alert.waitForExistence(timeout: 2))
@@ -313,7 +311,7 @@ final class WorkBenchUITests: XCTestCase {
         XCTAssertFalse(alert.waitForExistence(timeout: 1))
         XCTAssertTrue(secondProject.exists)
 
-        deleteButton.click()
+        chooseFileCommand("Delete Project", in: app)
         alert = app.sheets.firstMatch
         XCTAssertTrue(alert.waitForExistence(timeout: 2))
         XCTAssertTrue(alert.staticTexts["Delete Project?"].exists)
@@ -334,9 +332,12 @@ final class WorkBenchUITests: XCTestCase {
         let projectsList = app.outlines["projects-list"]
         XCTAssertTrue(projectsList.exists)
 
-        let newProjectButton = app.buttons["new-project-button"]
-        XCTAssertTrue(newProjectButton.waitForExistence(timeout: 2))
-        newProjectButton.click()
+        let fileMenu = app.menuBars.menuBarItems["File"]
+        fileMenu.click()
+        for command in ["New Project", "Open Project", "Save", "Duplicate Project", "Delete Project"] {
+            XCTAssertTrue(app.menuItems[command].exists)
+        }
+        app.menuItems["New Project"].click()
 
         let nameField = app.textFields["project-name-field"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 2))
@@ -346,9 +347,7 @@ final class WorkBenchUITests: XCTestCase {
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(projectsList.staticTexts["Untitled Project"].exists)
 
-        let duplicateProjectButton = app.buttons["duplicate-project-button"]
-        XCTAssertTrue(duplicateProjectButton.isEnabled)
-        duplicateProjectButton.click()
+        chooseFileCommand("Duplicate Project", in: app)
         XCTAssertEqual(nameField.value as? String, "Untitled Project Copy")
         XCTAssertFalse(projectsList.staticTexts["Untitled Project Copy"].exists)
 
@@ -532,6 +531,16 @@ final class WorkBenchUITests: XCTestCase {
     @MainActor
     private func reloadConfigurations(in app: XCUIApplication) {
         app.typeKey("r", modifierFlags: [.command, .shift])
+    }
+
+    @MainActor
+    private func chooseFileCommand(_ command: String, in app: XCUIApplication) {
+        let fileMenu = app.menuBars.menuBarItems["File"]
+        XCTAssertTrue(fileMenu.waitForExistence(timeout: 2))
+        fileMenu.click()
+        let item = app.menuItems[command]
+        XCTAssertTrue(item.waitForExistence(timeout: 2))
+        item.click()
     }
 
     @MainActor

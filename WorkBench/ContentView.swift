@@ -193,6 +193,16 @@ struct ContentView: View {
                 Button(action: model.createProject) { Label("New Project", systemImage: "plus") }
                     .labelStyle(.titleAndIcon)
                     .accessibilityIdentifier("new-project-button")
+                Button("Open Project", systemImage: "play.fill") {
+                    Task { await model.openSelectedProject() }
+                }
+                    .labelStyle(.titleAndIcon)
+                    .accessibilityIdentifier("open-project-button")
+                    .disabled(workflow.draft == nil || model.isOpeningProject)
+                Button("Save", systemImage: "square.and.arrow.down", action: model.save)
+                    .labelStyle(.titleAndIcon)
+                    .accessibilityIdentifier("save-project-button")
+                    .disabled(!workflow.isDirty)
                 Button(action: model.duplicateSelectedProject) {
                     Label("Duplicate Project", systemImage: "plus.square.on.square")
                 }
@@ -205,18 +215,6 @@ struct ContentView: View {
                 .labelStyle(.titleAndIcon)
                 .accessibilityIdentifier("delete-project-button")
                 .disabled(workflow.draft == nil)
-            }
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button("Open Project", systemImage: "play.fill") {
-                    Task { await model.openSelectedProject() }
-                }
-                    .labelStyle(.titleAndIcon)
-                    .accessibilityIdentifier("open-project-button")
-                    .disabled(workflow.draft == nil || model.isOpeningProject)
-                Button("Save", systemImage: "square.and.arrow.down", action: model.save)
-                    .labelStyle(.titleAndIcon)
-                    .accessibilityIdentifier("save-project-button")
-                    .disabled(!workflow.isDirty)
             }
         }
     }

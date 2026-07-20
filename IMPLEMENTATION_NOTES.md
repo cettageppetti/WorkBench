@@ -443,11 +443,14 @@ Manual hardening verified keyboard traversal, arrow-key list navigation, form
 focus, dirty-state behavior, and VoiceOver labels. The 840×520 minimum and a
 large window layout remain practical. The initial automatic toolbar style kept
 all actions icon-only even with ample width, making Open Project difficult to
-discover. New, Duplicate, Delete, Open Project, and Save now explicitly use
-title-and-icon labels in window-level primary toolbar groups. This placement
-keeps the Project title beside the sidebar in the production `Window` scene;
-at minimum width, Open Project and Save move into the native overflow menu
-without overlap.
+discover. New, Open Project, Save, Duplicate, and Delete now explicitly use
+title-and-icon labels in one prioritized window-level primary toolbar group.
+This placement keeps the Project title beside the sidebar in the production
+`Window` scene and preserves New, Open, and Save ahead of Duplicate and Delete
+when macOS moves trailing actions into native overflow at narrower widths.
+The same five Project actions appear in the File menu in that order, so every
+toolbar action remains available when its button is overflowed. New Project
+uses Command-N; Open and Save retain Command-O and Command-S.
 
 The AppKit save-before-closing alert explicitly loads the running bundle's icon
 through `NSWorkspace`. This keeps lifecycle prompts branded with the WorkBench

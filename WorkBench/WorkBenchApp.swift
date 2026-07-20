@@ -56,6 +56,8 @@ struct WorkBenchApp: App {
         }
         .commands {
             CommandGroup(replacing: .saveItem) {
+                Button("New Project", action: model.createProject)
+                    .keyboardShortcut("n", modifiers: .command)
                 Button("Open Project") {
                     Task { await model.openSelectedProject() }
                 }
@@ -63,6 +65,13 @@ struct WorkBenchApp: App {
                     .disabled(model.workflow?.draft == nil || model.isOpeningProject)
                 Button("Save", action: model.save)
                     .keyboardShortcut("s", modifiers: .command)
+                    .disabled(model.workflow?.isDirty != true)
+                Divider()
+                Button("Duplicate Project", action: model.duplicateSelectedProject)
+                    .disabled(model.workflow?.draft == nil)
+                Button("Delete Project", action: model.confirmDeleteSelectedProject)
+                    .disabled(model.workflow?.draft == nil)
+                Divider()
                 Button("Reload Projects", action: model.reload)
                     .keyboardShortcut("r", modifiers: [.command, .shift])
                 Button("Reveal Project Library", action: model.revealProjectLibrary)

@@ -94,7 +94,10 @@ and keeps the Projects editor hidden until the user resolves migration.
 - Keyboard traversal, list navigation, form focus, dirty-state behavior, and
   VoiceOver labels were reviewed manually. Minimum and large layouts remain
   usable; toolbar actions show title-and-icon labels when space permits and move
-  into native overflow without overlap at the minimum size.
+  into native overflow without overlap at the minimum size. New, Open, and Save
+  precede Duplicate and Delete so the latter actions overflow first.
+- The File menu contains New, Open, Save, Duplicate, and Delete Project in the
+  same priority order, providing stable access independent of toolbar overflow.
 - Starter Project opens new Safari, Terminal, and Finder windows in order.
 - Reopening Starter Project creates one additional window in each application.
 - Adding, selecting, and immediately removing a Safari Window no longer
