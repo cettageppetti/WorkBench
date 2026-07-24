@@ -1,4 +1,4 @@
-# AeroPeek Development Instructions
+# WorkBench Development Instructions
 
 ## Working principles
 
